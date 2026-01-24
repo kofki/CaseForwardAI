@@ -1,66 +1,56 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+import { Specialist, AgentContext } from '../core/specialist';
+import { AgentRole, AgentMessage } from '../core/types';
+import { generateText } from 'ai';
+import { google } from '../core/gemini';
 
-export interface EvidenceAnalyzerResponse {
-  opinion: string;
-  facts: string[];
-  contradictions: string[];
-  evidenceScore: number;
-  recommendations: string[];
-}
+export class EvidenceAnalyzer implements Specialist {
+    role: AgentRole = 'EVIDENCE_ANALYZER';
+    description = "Detail-oriented fact checker who spots contradictions, missing documents, and key facts buried in attachments.";
 
-export async function analyzeAsEvidenceAnalyzer(caseData: {
-  title: string;
-  description: string;
-  metadata?: Record<string, any>;
-}): Promise<EvidenceAnalyzerResponse> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-  
-  const prompt = `You are the Evidence Analyzer, an AI specialist focused on facts and logical consistency. 
-Analyze this case objectively:
+    async opine(input: string, context: AgentContext): Promise<string> {
+        const prompt = `
+      You are the Evidence Analyzer for a personal injury law firm.
+      User Input: "${input}"
+      
+      Your job is to:
+      1. Ignore feelings. Look for facts, dates, dollar amounts, and inconsistencies.
+      2. SPOT MISSING DOCUMENTS: Flag if critical documents are missing (e.g., police report, medical records, insurance policy, demand letters).
+      3. FIND BURIED KEY FACTS: Identify important facts that might be buried in attachments or overlooked (e.g., pre-existing conditions, witness names, liability admissions).
+      
+      If this is just a gripe with no evidentiary value, say "No evidentiary value."
+      If there is a factual claim, note it for verification.
+      If documents are missing or key facts are buried, call them out clearly.
+    `;
 
-Title: ${caseData.title}
-Description: ${caseData.description}
-${caseData.metadata ? `Metadata: ${JSON.stringify(caseData.metadata)}` : ''}
+        const { text } = await generateText({
+            model: google('gemini-2.5-flash-lite'),
+            prompt: prompt,
+        });
 
-Provide:
-1. Your objective opinion based on facts
-2. Key facts identified (3-5 bullet points)
-3. Any contradictions or inconsistencies found
-4. An evidence score (0-100) indicating the strength of evidence
-5. Recommendations for gathering more evidence
-
-Respond in JSON format with: opinion, facts (array), contradictions (array), evidenceScore (number), recommendations (array).`;
-
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    // Try to parse JSON from the response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+        return text;
     }
-    
-    // Fallback if JSON parsing fails
-    return {
-      opinion: text,
-      facts: ['Case details provided', 'Documentation available'],
-      contradictions: [],
-      evidenceScore: 70,
-      recommendations: ['Verify documentation', 'Cross-reference facts'],
-    };
-  } catch (error) {
-    console.error('Evidence Analyzer error:', error);
-    return {
-      opinion: 'Unable to analyze evidence at this time. Please review the case documentation.',
-      facts: ['Case exists', 'Details provided'],
-      contradictions: [],
-      evidenceScore: 50,
-      recommendations: ['Review all documents', 'Verify information'],
-    };
-  }
-}
 
+    async reply(messageHistory: AgentMessage[], context: AgentContext): Promise<string> {
+        const lastMessage = messageHistory[messageHistory.length - 1];
+
+        const prompt = `
+      You are the Evidence Analyzer.
+      The last message was from ${lastMessage.role}: "${lastMessage.content}"
+      
+      Your job is to:
+      1. If the Client Guru suggests promising something, check if the facts support it.
+      2. Flag any MISSING DOCUMENTS that we should request (medical records, bills, authorizations, police reports).
+      3. Point out KEY FACTS that may be buried in attachments and need attorney attention.
+      
+      Be the refreshing skeptic in the room. Keep it concise.
+    `;
+
+        const { text } = await generateText({
+            model: google('gemini-2.5-flash-lite'),
+            prompt: prompt,
+        });
+
+        return text;
+    }
+}

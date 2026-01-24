@@ -1,62 +1,50 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+import { Specialist, AgentContext } from '../core/specialist';
+import { AgentRole, AgentMessage } from '../core/types';
+import { generateText } from 'ai';
+import { google } from '../core/gemini';
 
-export interface ClientGuruResponse {
-  opinion: string;
-  empathyPoints: string[];
-  clarityScore: number;
-  recommendations: string[];
-}
+export class ClientGuru implements Specialist {
+    role: AgentRole = 'CLIENT_GURU';
+    description = "Empathetic communicator who prioritizes client satisfaction and clear updates.";
 
-export async function analyzeAsClientGuru(caseData: {
-  title: string;
-  description: string;
-  metadata?: Record<string, any>;
-}): Promise<ClientGuruResponse> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-  
-  const prompt = `You are the Client Guru, an AI specialist focused on empathy and clarity. 
-Analyze this case from the client's perspective:
+    async opine(input: string, context: AgentContext): Promise<string> {
+        const prompt = `
+      You are the Client Communication Guru for a law firm.
+      User Input: "${input}"
+      
+      Your goal is to identify if the client needs reassurance, an update, or a specific answer.
+      Draft a short internal thought about what we should do for this client.
+      Focus on empathy and tone.
+    `;
 
-Title: ${caseData.title}
-Description: ${caseData.description}
-${caseData.metadata ? `Metadata: ${JSON.stringify(caseData.metadata)}` : ''}
+        const { text } = await generateText({
+            model: google('gemini-2.5-flash-lite'),
+            prompt: prompt,
+        });
 
-Provide:
-1. Your empathetic opinion on how the client might feel
-2. Key empathy points (3-5 bullet points)
-3. A clarity score (0-100) indicating how clear the case is
-4. Recommendations for improving client communication
-
-Respond in JSON format with: opinion, empathyPoints (array), clarityScore (number), recommendations (array).`;
-
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    // Try to parse JSON from the response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+        return text;
     }
-    
-    // Fallback if JSON parsing fails
-    return {
-      opinion: text,
-      empathyPoints: ['Client needs clear communication', 'Empathy is crucial'],
-      clarityScore: 75,
-      recommendations: ['Improve documentation', 'Provide regular updates'],
-    };
-  } catch (error) {
-    console.error('Client Guru error:', error);
-    return {
-      opinion: 'Unable to analyze at this time. Please ensure clear communication with the client.',
-      empathyPoints: ['Client needs support', 'Clear communication required'],
-      clarityScore: 50,
-      recommendations: ['Review case details', 'Contact client for clarification'],
-    };
-  }
-}
 
+    async reply(messageHistory: AgentMessage[], context: AgentContext): Promise<string> {
+        const lastMessage = messageHistory[messageHistory.length - 1];
+
+        const prompt = `
+      You are the Client Communication Guru.
+      You are in a round-table discussion with other legal AI specialists.
+      
+      The last message was from ${lastMessage.role}: "${lastMessage.content}"
+      
+      Respond to this. If the Evidence Analyzer points out bad facts, suggest how to break it gently to the client.
+      If the Orchestrator asks for a draft, provide a drafted response.
+      Keep it concise (under 3 sentences unless drafting).
+    `;
+
+        const { text } = await generateText({
+            model: google('gemini-2.5-flash-lite'), // User requested Gemini
+            prompt: prompt,
+        });
+
+        return text;
+    }
+}
