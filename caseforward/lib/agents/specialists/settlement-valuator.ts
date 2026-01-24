@@ -29,26 +29,75 @@ VALUATION METHODOLOGY:
 `;
     }
 
+    private buildFinancialsContextSection(context: AgentContext): string {
+        const { caseData } = context;
+        if (!caseData?.caseId) {
+            return "No case financials available.";
+        }
+
+        const sections: string[] = [];
+
+        // Actual financials from database
+        sections.push(`=== ACTUAL CASE FINANCIALS ===`);
+        sections.push(`Medical Bills: $${caseData.financials.totalMedicalBills.toLocaleString()}`);
+        sections.push(`Lost Wages: $${caseData.financials.lostWages.toLocaleString()}`);
+        sections.push(`Property Damage: $${caseData.financials.propertyDamage.toLocaleString()}`);
+        sections.push(`Total Specials: $${(caseData.financials.totalMedicalBills + caseData.financials.lostWages + caseData.financials.propertyDamage).toLocaleString()}`);
+
+        if (caseData.financials.demandAmount) {
+            sections.push(`Demand Amount: $${caseData.financials.demandAmount.toLocaleString()}`);
+        }
+
+        // Insurance policy limits
+        sections.push(`\n=== INSURANCE ===`);
+        sections.push(`Carrier: ${caseData.insurance.defendantCarrier}`);
+        if (caseData.insurance.policyLimit) {
+            sections.push(`Policy Limit: $${caseData.insurance.policyLimit.toLocaleString()}`);
+        } else {
+            sections.push(`Policy Limit: UNKNOWN - Request discovery!`);
+        }
+
+        // Actual liens from database
+        if (caseData.liens.length > 0) {
+            sections.push(`\n=== LIENS (${caseData.liens.length}) ===`);
+            let totalLiens = 0;
+            for (const lien of caseData.liens) {
+                sections.push(`${lien.type.toUpperCase()} (${lien.lienholderName}): $${lien.currentBalance.toLocaleString()} [Priority: ${lien.priority}, Status: ${lien.status}]`);
+                totalLiens += lien.currentBalance;
+            }
+            sections.push(`TOTAL LIENS: $${totalLiens.toLocaleString()}`);
+        } else {
+            sections.push(`\n=== LIENS ===`);
+            sections.push(`No liens identified yet.`);
+        }
+
+        return sections.join('\n');
+    }
+
     async opine(input: string, context: AgentContext): Promise<string> {
+        const financialsContext = this.buildFinancialsContextSection(context);
+
         const prompt = `
 You are the Settlement Valuator (Records Wrangler) for a personal injury law firm.
 ${this.getLienKnowledgePrompt()}
 
+${financialsContext}
+
 User Input: "${input}"
 
-ANALYZE AND ESTIMATE:
-1. IDENTIFY DAMAGES: Medical bills, lost wages mentioned
-2. ASSESS LIABILITY: Is fault clear, mixed, or weak?
+ANALYZE AND ESTIMATE using the ACTUAL CASE DATA above:
+1. IDENTIFY DAMAGES: Use the actual medical bills and lost wages shown above.
+2. ASSESS LIABILITY: Is fault clear, mixed, or weak based on available evidence?
 3. ASSESS INJURY SEVERITY: Minor, moderate, severe, or permanent?
-4. IDENTIFY POLICY LIMITS: Any caps mentioned?
-5. IDENTIFY LIENS: Medicare, Medicaid, hospital, ERISA, etc.
+4. APPLY POLICY LIMITS: Use the actual policy limit if known.
+5. CALCULATE LIEN DEDUCTIONS: Use the actual liens listed above with their priorities.
 6. ASSESS COLLECTION RISK: Insured, underinsured, uninsured?
 
-OUTPUT FORMAT (be precise):
-- Baseline gross range: $X - $Y (medical specials × multiplier)
+OUTPUT FORMAT (be precise with the ACTUAL numbers):
+- Baseline gross range: $X - $Y (actual specials × multiplier)
 - Liability-adjusted gross: $X - $Y (after liability modifier)
 - Capped gross: $X - $Y (if policy limits apply, else "No cap identified")
-- Net to client range: $A - $B (after attorney fees, costs, liens)
+- Net to client range: $A - $B (after attorney fees, costs, actual liens)
 - Confidence: low/medium/high
 - Confidence factors: [list 2-3 reasons]
 - Missing for accurate valuation: [what we need]
@@ -64,23 +113,24 @@ OUTPUT FORMAT (be precise):
 
     async reply(messageHistory: AgentMessage[], context: AgentContext): Promise<string> {
         const lastMessage = messageHistory[messageHistory.length - 1];
+        const financialsContext = this.buildFinancialsContextSection(context);
 
         const prompt = `
 You are the Settlement Valuator (Records Wrangler).
 ${this.getLienKnowledgePrompt()}
 
+${financialsContext}
+
 The last message was from ${lastMessage.role}: "${lastMessage.content}"
 
 Your job is to:
-1. If the Client Guru is making promises, check if the numbers support them. Apply modifiers!
+1. If the Client Guru is making promises, check if the ACTUAL numbers above support them.
 2. If the Evidence Analyzer found missing docs, estimate how that affects case value and lien resolution.
-3. If a high gross is mentioned, check:
-   - Is there a policy cap that limits actual recovery?
-   - Is there collection risk (underinsured/uninsured)?
-   - What's the realistic NET after attorney fees and liens?
-4. Be the voice of financial reality. Clients care about take-home, not theoretical gross.
+3. Always reference the ACTUAL policy limit when discussing recovery caps.
+4. Calculate realistic NET using the ACTUAL liens listed above, not estimates.
+5. Be the voice of financial reality. Clients care about take-home, not theoretical gross.
 
-Keep it concise but always distinguish baseline → adjusted → capped → net.
+Keep it concise but always distinguish baseline → adjusted → capped → net using real numbers.
 `;
 
         const { text } = await generateText({
@@ -91,4 +141,5 @@ Keep it concise but always distinguish baseline → adjusted → capped → net.
         return text;
     }
 }
+
 

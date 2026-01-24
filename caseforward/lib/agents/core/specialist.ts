@@ -1,8 +1,9 @@
 
 import { AgentRole, AgentMessage, ActionCard } from './types';
+import { CaseContext } from '../services/case-context.service';
 
 export interface AgentContext {
-    caseData: any; // TODO: Define strict Case schema later
+    caseData: CaseContext;
     previousMessages: AgentMessage[];
 }
 

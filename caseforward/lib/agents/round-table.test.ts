@@ -1,6 +1,7 @@
 
 import { RoundTable } from './round-table';
 import { generateText, generateObject } from 'ai';
+import { CaseContext } from './services/case-context.service';
 
 // Mock the 'ai' module
 jest.mock('ai', () => ({
@@ -14,6 +15,63 @@ jest.mock('@ai-sdk/google', () => ({
     google: jest.fn().mockImplementation((model) => `mocked-model-${model}`),
     createGoogleGenerativeAI: jest.fn().mockReturnValue((model: string) => `mocked-custom-model-${model}`),
 }));
+
+// Helper to create a mock CaseContext
+function createMockCaseContext(overrides: Partial<CaseContext> = {}): CaseContext {
+    return {
+        caseId: 'test-case-123',
+        caseNumber: 'CF-2025-12345',
+        caseType: 'auto_accident',
+        status: 'treatment',
+        client: {
+            name: 'Test Client',
+            email: 'test@email.com',
+            phone: '555-0000',
+        },
+        team: {
+            leadAttorney: 'Test Attorney',
+            paralegal: 'Test Paralegal',
+        },
+        insurance: {
+            defendantCarrier: 'Test Insurance',
+            claimNumber: 'CLM-123',
+            policyLimit: 100000,
+            adjusterName: 'Adjuster',
+            adjusterEmail: 'adj@ins.com',
+            adjusterPhone: '555-1111',
+        },
+        incident: {
+            date: new Date('2025-01-01'),
+            location: 'Test Location',
+            description: 'Test incident',
+        },
+        financials: {
+            totalMedicalBills: 10000,
+            totalLiens: 5000,
+            lostWages: 2000,
+            propertyDamage: 1000,
+        },
+        evidenceChecklist: {
+            clientIntake: true,
+            retainerSigned: true,
+            policeReport: false,
+            medicalRecords: true,
+            medicalBills: true,
+            incidentPhotos: false,
+            witnessStatements: false,
+            payStubs: true,
+            employerLetter: false,
+            insuranceDocs: true,
+        },
+        missingDocuments: ['Police Report', 'Incident Photos', 'Witness Statements', 'Employer Letter'],
+        documents: [],
+        liens: [],
+        recentActions: [],
+        aiFlags: [],
+        daysUntilSOL: 365,
+        ...overrides,
+    };
+}
 
 describe('RoundTable', () => {
     let table: RoundTable;
@@ -49,7 +107,8 @@ describe('RoundTable', () => {
 
         (generateObject as jest.Mock).mockResolvedValueOnce({ object: mockCard });
 
-        const result = await table.discuss("Clients are complaining about the delay", { id: "case-123" });
+        const mockContext = createMockCaseContext();
+        const result = await table.discuss("Clients are complaining about the delay", mockContext);
 
         // Check History Steps
         // 1. Orchestrator Intro
@@ -79,7 +138,9 @@ describe('RoundTable', () => {
         (generateText as jest.Mock).mockResolvedValue({ text: "Generic Reponse" });
         (generateObject as jest.Mock).mockResolvedValue({ object: { title: "Generic Action", type: "NO_ACTION", confidence: 1, reasoning: "None", description: "None" } });
 
-        const result = await table.discuss("Input", {});
+        const mockContext = createMockCaseContext();
+        const result = await table.discuss("Input", mockContext);
         expect(result.card).toBeDefined();
     });
 });
+

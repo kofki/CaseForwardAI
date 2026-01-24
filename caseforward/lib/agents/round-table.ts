@@ -8,6 +8,7 @@ import { SettlementValuator } from './specialists/settlement-valuator';
 import { generateObject, generateText } from 'ai';
 import { google } from './core/gemini';
 import { randomUUID } from 'crypto';
+import { fetchFullCaseContext, CaseContext, formatCaseContextForPrompt } from './services/case-context.service';
 
 export class RoundTable {
     private specialists: Record<AgentRole, Specialist>;
@@ -22,18 +23,50 @@ export class RoundTable {
         };
     }
 
-    async discuss(input: string, caseContext: any): Promise<{ history: AgentMessage[], card: ActionCard }> {
-        // 1. Orchestrator introduces the topic
-        this.addMessage('ORCHESTRATOR', `New Input received: "${input}". Team, what are your thoughts?`);
+    /**
+     * Primary entry point for database-connected discussions.
+     * Fetches full case context and runs the round table discussion.
+     */
+    async discussWithCase(caseId: string, input: string): Promise<{ history: AgentMessage[], card: ActionCard, caseContext: CaseContext }> {
+        // Fetch full case context from database
+        const caseContext = await fetchFullCaseContext(caseId);
 
-        // 2. Initial Opinions (All specialists)
-        const guruOpine = await this.specialists.CLIENT_GURU.opine(input, { caseData: caseContext, previousMessages: this.history });
+        // Run discussion with real data
+        const result = await this.discuss(input, caseContext);
+
+        return {
+            ...result,
+            caseContext
+        };
+    }
+
+    /**
+     * Original discuss method - now expects typed CaseContext
+     */
+    async discuss(input: string, caseContext: CaseContext): Promise<{ history: AgentMessage[], card: ActionCard }> {
+        // Reset history for new discussion
+        this.history = [];
+
+        // Format context for orchestrator intro
+        const contextSummary = formatCaseContextForPrompt(caseContext);
+
+        // 1. Orchestrator introduces the topic with case context
+        this.addMessage('ORCHESTRATOR', `New Input received for Case #${caseContext.caseNumber} (${caseContext.client.name}): "${input}"\n\nCase Context:\n${contextSummary}\n\nTeam, what are your thoughts?`);
+
+        // Build agent context
+        const agentContext: AgentContext = {
+            caseData: caseContext,
+            previousMessages: this.history
+        };
+
+        // 2. Initial Opinions (All specialists - with full context)
+        const guruOpine = await this.specialists.CLIENT_GURU.opine(input, agentContext);
         this.addMessage('CLIENT_GURU', guruOpine);
 
-        const analyzerOpine = await this.specialists.EVIDENCE_ANALYZER.opine(input, { caseData: caseContext, previousMessages: this.history });
+        const analyzerOpine = await this.specialists.EVIDENCE_ANALYZER.opine(input, { ...agentContext, previousMessages: this.history });
         this.addMessage('EVIDENCE_ANALYZER', analyzerOpine);
 
-        const valuatorOpine = await this.specialists.SETTLEMENT_VALUATOR.opine(input, { caseData: caseContext, previousMessages: this.history });
+        const valuatorOpine = await this.specialists.SETTLEMENT_VALUATOR.opine(input, { ...agentContext, previousMessages: this.history });
         this.addMessage('SETTLEMENT_VALUATOR', valuatorOpine);
 
         // 3. Orchestrator Synthesis
@@ -41,21 +74,26 @@ export class RoundTable {
 
         // 4. Final Decision Card Generation
         type ActionCardOutput = z.infer<typeof ActionCardSchema>;
-        const { object }: { object: ActionCardOutput } = await generateObject({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const result = await generateObject({
             model: google('gemini-2.5-flash'),
-            schema: ActionCardSchema,
+            schema: ActionCardSchema as any,
             prompt: `
         Analyze the following round-table discussion between legal AI specialists.
+        
+        Case: ${caseContext.caseNumber} | Client: ${caseContext.client.name} | Type: ${caseContext.caseType}
         
         Transcript:
         ${this.history.map(m => `${m.role}: ${m.content}`).join('\n')}
         
-        Based on this, generate a single Action Card for the attorney to review.
+        Based on this discussion AND the actual case data, generate a single Action Card for the attorney to review.
         - If the Client Guru is drafting an email, put the draft in metadata.emailBody
         - If the Evidence Analyzer flagged a risk or missing docs, put the warning in reasoning.
-        - If the Settlement Valuator provided figures, include them in the reasoning.
+        - If the Settlement Valuator provided figures from actual case data, include them in the reasoning.
+        - Reference the client by name (${caseContext.client.name}) in any communications.
       `
         });
+        const object = result.object as ActionCardOutput;
 
         return {
             history: this.history,
@@ -81,3 +119,4 @@ export class RoundTable {
         });
     }
 }
+
