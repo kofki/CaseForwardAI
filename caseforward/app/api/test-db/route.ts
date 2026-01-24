@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/db/connect';
-import Case from '@/lib/db/models/Case';
+import clientPromise from '@/lib/db/connect';
+import Case, { createCase } from '@/lib/db/models/Case';
 
 export async function GET() {
   try {
-    await connectToDatabase();
+    await clientPromise;
     const caseCount = await Case.countDocuments();
     return NextResponse.json({
       success: true,
@@ -22,20 +22,14 @@ export async function GET() {
 
 export async function POST() {
   try {
-    await connectToDatabase();
-    const testCase = new Case({
+    await clientPromise;
+    const testCase = await createCase({
       caseNumber: `TEST-${Date.now()}`,
       caseType: 'auto_accident',
-      status: 'intake',
-      client: { name: 'Test Client', email: 'test@example.com', phone: '555-1234' },
-      incident: { date: new Date(), location: 'Test Location', description: 'Test accident description' },
-      dates: {
-        intakeDate: new Date(),
-        statuteOfLimitations: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-      },
-      team: { attorney: 'Test Attorney', paralegal: 'Test Paralegal' },
+      title: 'Test Case',
+      description: 'Test case for database connectivity',
+      status: 'pending',
     });
-    await testCase.save();
     return NextResponse.json({ success: true, message: 'Test case created!', data: testCase });
   } catch (error: any) {
     console.error('Error creating test case:', error);
