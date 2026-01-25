@@ -51,10 +51,10 @@ export default async function Dashboard() {
 
     // Use real cases data
     caseList =
-      cases?.slice(0, 4).map((c: ICase) => ({
-        status: c.status || CaseStatus.INTAKE,
-        id: c._id?.toString?.() || c.caseNumber,
+      cases?.slice(0, 4).map((c: any) => ({
+        id: c._id.toString(), // Add this line
         caseNum: c.caseNumber,
+        status: c.status || CaseStatus.INTAKE, // Add this line
         client:
           `${c.client?.firstName || ""} ${c.client?.lastName || "Unknown"}`.trim(),
         caseName: c.title || c.description || "Untitled Case",
@@ -216,39 +216,34 @@ export default async function Dashboard() {
                 {caseList.map((item, idx) => (
                   <tr
                     key={idx}
-                    className="border-b border-gray-100 hover:bg-gray-50"
+                    className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
                   >
                     <td className="px-6 py-4 text-base font-semibold text-gray-900">
                       <Link
-                        href={`/app/case/${item.id}`}
-                        className="block w-full h-full text-[#4b1d1d] hover:underline"
+                        href={`/app/case/${item.id}/documents`}
+                        className="hover:text-blue-600 hover:underline"
                       >
                         {item.caseNum}
                       </Link>
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
                       <Link
-                        href={`/app/case/${item.id}`}
-                        className="block w-full h-full text-[#4b1d1d] hover:underline"
+                        href={`/app/case/${item.id}/documents`}
+                        className="hover:text-blue-600"
                       >
                         {item.client}
                       </Link>
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
                       <Link
-                        href={`/app/case/${item.id}`}
-                        className="block w-full h-full text-[#4b1d1d] hover:underline"
+                        href={`/app/case/${item.id}/documents`}
+                        className="hover:text-blue-600"
                       >
                         {item.caseName}
                       </Link>
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
-                      <Link
-                        href={`/app/case/${item.id}`}
-                        className="block w-full h-full text-[#4b1d1d] hover:underline"
-                      >
-                        {item.incidentDate}
-                      </Link>
+                      {item.incidentDate}
                     </td>
                   </tr>
                 ))}

@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RoundTable } from '@/lib/agents/round-table';
+import { runRoundTable, RoundTableResult } from '@/lib/agents/round-table-v2';
+
+interface DiscussRequest {
+  caseId: string;
+  input: string;
+  documentId?: string;
+  documentText?: string;
+  config?: {
+    maxRounds?: number;
+    persistActions?: boolean;
+  };
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { caseId, input } = await request.json();
+    const body: DiscussRequest = await request.json();
+    const { caseId, input, documentId, documentText, config } = body;
 
     if (!caseId || !input) {
       return NextResponse.json(
@@ -12,14 +24,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const roundTable = new RoundTable();
-    const result = await roundTable.discussWithCase(caseId, input);
+    // Run the enhanced Round Table V2
+    const result: RoundTableResult = await runRoundTable(caseId, input, {
+      documentId,
+      documentText,
+      config: {
+        maxRounds: config?.maxRounds ?? 2,
+        persistActions: config?.persistActions ?? true,
+        createAuditLog: true,
+      },
+    });
+
+    // Flatten the discussion history from all rounds
+    const allMessages = result.session.rounds.flatMap(round => round.messages);
 
     return NextResponse.json({
       success: true,
-      history: result.history,
-      actionCard: result.card,
-      caseContext: result.caseContext
+      
+      // Session info
+      sessionId: result.session.sessionId,
+      roundsCompleted: result.session.rounds.length,
+      
+      // Consensus
+      consensus: result.session.consensus,
+      
+      // Discussion transcript
+      history: allMessages,
+      
+      // Final output
+      actionCard: result.actionCard,
+      actionId: result.session.persistedActionId,
+      
+      // Context
+      caseContext: result.caseContext,
     });
   } catch (error: any) {
     console.error('Agent discussion error:', error);

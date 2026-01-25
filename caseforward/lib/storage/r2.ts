@@ -73,40 +73,29 @@ export async function uploadToR2(
   }
 }
 
-export async function getSignedUrl(
-  objectKey: string,
-  expiresInSeconds: number = 3600
-): Promise<string | null> {
-  const workerUrl = process.env.CF_WORKER_URL;
-  const apiKey = process.env.INTERNAL_API_KEY;
-
-  if (!workerUrl || !apiKey) {
-    console.error('R2 configuration missing');
-    return null;
-  }
-
+/**
+ * Generate a signed URL for viewing/downloading a file
+ */
+export async function getSignedUrl(objectKey: string, expiresIn = 3600): Promise<string | null> {
   try {
-    const response = await fetch(`${workerUrl}/signed-url`, {
-      method: 'POST',
-      headers: {
-        'X-Internal-Auth': apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        objectKey,
-        expiresIn: expiresInSeconds,
-      }),
-    });
-
-    if (!response.ok) {
-      console.error('Failed to get signed URL:', response.statusText);
+    const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+    const { getSignedUrl: s3GetSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+    
+    const client = getR2Client();
+    if (!client) {
+      console.error('R2 client not configured');
       return null;
     }
 
-    const result = await response.json();
-    return result.signedUrl;
+    const command = new GetObjectCommand({
+      Bucket: process.env.R2_BUCKET_NAME,
+      Key: objectKey,
+    });
+
+    const signedUrl = await s3GetSignedUrl(client, command, { expiresIn });
+    return signedUrl;
   } catch (error) {
-    console.error('Error getting signed URL:', error);
+    console.error('Error generating signed URL:', error);
     return null;
   }
 }

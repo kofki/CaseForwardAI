@@ -22,15 +22,18 @@ export default function CaseDetailClient({ case_, actions, session }: CaseDetail
     setIsAnalyzing(true);
     setChatLog(prev => [...prev, {
       role: 'system',
-      message: 'Starting agent analysis...',
+      message: 'Starting Round Table analysis...',
       timestamp: new Date(),
     }]);
 
     try {
-      const response = await fetch('/api/agent', {
+      const response = await fetch('/api/agents/discuss', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caseId: case_._id?.toString() }),
+        body: JSON.stringify({ 
+          caseId: case_._id?.toString(),
+          input: 'Please analyze this case and recommend the most important next steps. Consider what documents might be missing, what the client should know, and the overall case valuation.',
+        }),
       });
 
       if (!response.ok) {
@@ -38,29 +41,40 @@ export default function CaseDetailClient({ case_, actions, session }: CaseDetail
       }
 
       const result = await response.json();
-      if (result.actionCard && ['approve', 'reject', 'review'].includes(result.actionCard.recommendation)) {
-        setActionCard(result.actionCard as Action['actionCard']);
+      
+      // Add discussion history to chat log
+      if (result.history && Array.isArray(result.history)) {
+        for (const msg of result.history) {
+          setChatLog(prev => [...prev, {
+            role: msg.role.toLowerCase().replace('_', '-'),
+            message: msg.content,
+            timestamp: new Date(msg.timestamp),
+          }]);
+        }
       }
-      setConsensus(result.consensus);
 
-      setChatLog(prev => [
-        ...prev,
-        {
-          role: 'client-guru',
-          message: result.consensus.clientGuruOpinion,
+      // Set the action card for swipe
+      if (result.actionCard) {
+        setActionCard({
+          recommendation: result.actionCard.type.toLowerCase() === 'draft_email' ? 'approve' : 'review',
+          reasoning: result.actionCard.reasoning,
+          confidence: result.actionCard.confidence,
+          title: result.actionCard.title,
+          description: result.actionCard.description,
+          emailBody: result.actionCard.metadata?.emailBody,
+        });
+      }
+
+      // Set consensus info
+      if (result.consensus) {
+        setConsensus(result.consensus);
+        setChatLog(prev => [...prev, {
+          role: 'system',
+          message: `✅ Consensus reached: ${(result.consensus.agreementLevel * 100).toFixed(0)}% agreement. ${result.consensus.recommendedAction}`,
           timestamp: new Date(),
-        },
-        {
-          role: 'evidence-analyzer',
-          message: result.consensus.evidenceAnalyzerOpinion,
-          timestamp: new Date(),
-        },
-        {
-          role: 'orchestrator',
-          message: result.consensus.finalDecision,
-          timestamp: new Date(),
-        },
-      ]);
+        }]);
+      }
+
     } catch (error) {
       console.error('Analysis error:', error);
       setChatLog(prev => [...prev, {
@@ -222,6 +236,16 @@ export default function CaseDetailClient({ case_, actions, session }: CaseDetail
             </div>
           </div>
         )}
+
+        {/* Documents Link */}
+        <div className="mt-6">
+          <Link 
+            href={`/app/case/${case_._id}/documents`}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            📄 View All Documents ({case_.documentCount || 0})
+          </Link>
+        </div>
       </main>
     </div>
   );

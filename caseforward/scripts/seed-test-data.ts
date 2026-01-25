@@ -292,7 +292,7 @@ function generateDocuments(caseId: any, checklist: Record<string, boolean>) {
                 caseId,
                 title: template.title,
                 category: template.category,
-                status: DocumentStatus.APPROVED,
+                status: DocumentStatus.PROCESSED,
                 file: {
                     originalName: `${template.title.toLowerCase().replace(/ /g, '_')}.pdf`,
                     storagePath: `/documents/${caseId}/${template.category}.pdf`,
