@@ -1,19 +1,20 @@
 import { auth0 } from '@/lib/auth0';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import dbConnect from '@/lib/db/dbConnect';
 import { getCases } from '@/lib/db/models/Case';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
+  await dbConnect()
+  const cases = await getCases()
   const session = await auth0.getSession();
   
   if (!session) {
     redirect('/auth/login');
   }
-
-  const cases = await getCases(session.user?.sub);
 
   return (
     <div className="min-h-screen bg-gray-50">

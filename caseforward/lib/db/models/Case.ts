@@ -264,8 +264,11 @@ export async function getCaseById(id: string | mongoose.Types.ObjectId) {
   return CaseModel.findById(id).exec();
 }
 
-export async function getCases(filter?: any) {
-  return CaseModel.find(filter ?? {}).sort({ createdAt: -1 }).exec();
+export async function getCases(filter?: Record<string, unknown>) {
+  // Ensure filter is always a plain object; ignore strings/other types
+  const safeFilter =
+    filter && typeof filter === 'object' && !Array.isArray(filter) ? filter : {};
+  return CaseModel.find(safeFilter).sort({ createdAt: -1 }).exec();
 }
 
 export default CaseModel;
