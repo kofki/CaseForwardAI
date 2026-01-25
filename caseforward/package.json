@@ -10,6 +10,11 @@
   },
   "dependencies": {
     "formidable": "^3.5.4",
+    "@auth0/nextjs-auth0": "^4.14.0",
+    "@google/generative-ai": "^0.21.0",
+    "@solana/web3.js": "^1.87.6",
+    "bson": "^5.3.0",
+    "mongodb": "^6.3.0",
     "mongoose": "^9.1.5",
     "next": "16.1.4",
     "pdf-parse": "^2.4.5",
