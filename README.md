@@ -13,15 +13,15 @@
 
 ---
 
-## Description
+## ✨ Description
 
 CaseForward takes documents from multiple channels (web uploads, email, call transcripts), processes them through AI specialists who deliberate on findings, and generates action cards for attorney creating an efficient workflow that bridges the gap between AI-powered analysis and human legal expertise.
 
 ---
 
-## Installation
+## 🚀 Installation
 
-### Prerequisites
+### 📋 Prerequisites
 - Node.js 18+
 - MongoDB Atlas or local instance
 - Google AI API Key (Gemini)
@@ -92,22 +92,24 @@ npm run dev
 **6. Access the Application**
 Open `http://localhost:3000` in your browser.
 
+
 ---
 
-### Tech Stack
+## 🧩 Tech Stack
 
 | Category | Technologies |
 |----------|--------------|
-| **Frontend** | Next.js 16, React 19, TypeScript, Tailwind CSS |
-| **Backend** | Next.js API Routes, MongoDB, Mongoose |
-| **AI** | Google Gemini 2.5, Vercel AI SDK, Zod |
-| **Storage** | Cloudflare R2, Cloudflare Workers |
-| **Auth** | Auth0 |
-| **Dev Tools** | ESLint, TSX, pnpm/npm |
+| 🖼️ **Frontend** | Next.js 16, React 19, TypeScript, Tailwind CSS |
+| ⚙️ **Backend** | Next.js API Routes, MongoDB, Mongoose |
+| 🤖 **AI** | Google Gemini 2.5, Vercel AI SDK, Zod |
+| ☁️ **Storage** | Cloudflare R2, Cloudflare Workers |
+| 🔐 **Auth** | Auth0 |
+| 🛠️ **Dev Tools** | ESLint, TSX, pnpm/npm |
+
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 CaseForward AI follows a modern serverless architecture with clear separation between the client application, server APIs, AI orchestration layer, and storage services.
 
@@ -152,7 +154,7 @@ CaseForward AI follows a modern serverless architecture with clear separation be
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### AI Layer
+### 🧠 AI Layer
 
 The AI layer implements a novel "Round Table" multi-agent deliberation system powered by Google Gemini.
 
@@ -175,8 +177,7 @@ The AI layer implements a novel "Round Table" multi-agent deliberation system po
 
 ---
 
-**Security Archetecture**
-- More information can be found: [link](https://github.com/kofki/CaseForwardAI/new/main)
+### Security Archetecture can be found [Here](https://github.com/kofki/CaseForwardAI/blob/main/Security.md)
 
 ---
 
