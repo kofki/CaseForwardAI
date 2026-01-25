@@ -1,71 +1,65 @@
-// lib/db/models/Lien.ts
-
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document as MongoDocument } from 'mongoose';
 import {
   LienType,
   LienStatus,
   LIEN_TYPES,
   LIEN_STATUSES,
-  LienTypePriority,
 } from '../types/enums';
 
-export interface ILien extends Document {
+export interface INegotiationHistory {
+  date: Date;
+  originalAmount: number;
+  offeredAmount: number;
+  notes?: string;
+  negotiatedBy: string;
+}
+
+export interface ILien extends MongoDocument {
   caseId: mongoose.Types.ObjectId;
-  type: LienType;
-  status: LienStatus;
-  priority: number;
-  lienholder: {
-    name: string;
-    contactName?: string;
+  documentId?: mongoose.Types.ObjectId;
+
+  lienType: LienType;
+  lienHolder: string;
+  lienHolderContact?: {
+    name?: string;
     phone?: string;
     email?: string;
+    address?: string;
     fax?: string;
-    address?: {
-      street: string;
-      city: string;
-      state: string;
-      zipCode: string;
-    };
-    accountNumber?: string;
-    claimNumber?: string;
   };
 
-  amounts: {
-    originalClaimed: number;
-    currentBalance: number;
-    negotiatedAmount?: number;
-    paidAmount: number;
-    waivedAmount: number;
-  };
+  claimNumber?: string;
+  accountNumber?: string;
 
-  negotiations: Array<{
-    date: Date;
-    contactedBy: string;
-    method: 'phone' | 'email' | 'mail' | 'fax';
-    offeredAmount?: number;
-    responseAmount?: number;
-    notes: string;
-    outcome?: string;
-  }>;
+  originalAmount: number;
+  currentAmount: number;
+  amountPaid: number;
+  remainingBalance: number;
 
-  relatedDocuments: Array<{
-    documentId: mongoose.Types.ObjectId;
-    description: string;
-  }>;
+  status: LienStatus;
 
-  dates: {
-    identifiedDate: Date;
-    noticeReceivedDate?: Date;
-    responseDeadline?: Date;
-    lastContactDate?: Date;
-    resolvedDate?: Date;
-  };
+  filedDate?: Date;
+  dueDate?: Date;
+  releasedDate?: Date;
+
+  negotiationHistory: INegotiationHistory[];
 
   notes?: string;
 
   createdAt: Date;
   updatedAt: Date;
 }
+
+const NegotiationHistorySchema = new Schema<INegotiationHistory>(
+  {
+    date: { type: Date, required: true },
+    originalAmount: { type: Number, required: true },
+    offeredAmount: { type: Number, required: true },
+    notes: { type: String },
+    negotiatedBy: { type: String, required: true },
+  },
+  { _id: false }
+);
 
 const LienSchema = new Schema<ILien>(
   {
@@ -75,7 +69,12 @@ const LienSchema = new Schema<ILien>(
       required: [true, 'Case ID is required'],
       index: true,
     },
-    type: {
+    documentId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Document',
+    },
+
+    lienType: {
       type: String,
       required: [true, 'Lien type is required'],
       enum: {
@@ -84,6 +83,43 @@ const LienSchema = new Schema<ILien>(
       },
       index: true,
     },
+    lienHolder: {
+      type: String,
+      required: [true, 'Lien holder is required'],
+      trim: true,
+    },
+    lienHolderContact: {
+      name: { type: String },
+      phone: { type: String },
+      email: { type: String },
+      address: { type: String },
+      fax: { type: String },
+    },
+
+    claimNumber: { type: String, trim: true },
+    accountNumber: { type: String, trim: true },
+
+    originalAmount: {
+      type: Number,
+      required: [true, 'Original amount is required'],
+      min: 0,
+    },
+    currentAmount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    amountPaid: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    remainingBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     status: {
       type: String,
       required: true,
@@ -94,135 +130,17 @@ const LienSchema = new Schema<ILien>(
       },
       index: true,
     },
-    priority: {
-      type: Number,
-      required: true,
-      min: 1,
-      max: 10,
-      default: function (this: ILien) {
-        return LienTypePriority[this.type as LienType] || 8;
-      },
-    },
-    lienholder: {
-      name: {
-        type: String,
-        required: [true, 'Lienholder name is required'],
-        trim: true,
-      },
-      contactName: {
-        type: String,
-        trim: true,
-      },
-      phone: {
-        type: String,
-        trim: true,
-      },
-      email: {
-        type: String,
-        trim: true,
-        lowercase: true,
-      },
-      fax: {
-        type: String,
-        trim: true,
-      },
-      address: {
-        street: String,
-        city: String,
-        state: String,
-        zipCode: String,
-      },
-      accountNumber: String,
-      claimNumber: String,
+
+    filedDate: { type: Date },
+    dueDate: { type: Date },
+    releasedDate: { type: Date },
+
+    negotiationHistory: {
+      type: [NegotiationHistorySchema],
+      default: [],
     },
 
-    amounts: {
-      originalClaimed: {
-        type: Number,
-        required: [true, 'Original claimed amount is required'],
-        min: 0,
-      },
-      currentBalance: {
-        type: Number,
-        required: [true, 'Current balance is required'],
-        min: 0,
-      },
-      negotiatedAmount: {
-        type: Number,
-        min: 0,
-      },
-      paidAmount: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      waivedAmount: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-    },
-
-    negotiations: [
-      {
-        date: {
-          type: Date,
-          default: Date.now,
-        },
-        contactedBy: {
-          type: String,
-          required: true,
-        },
-        method: {
-          type: String,
-          enum: ['phone', 'email', 'mail', 'fax'],
-          required: true,
-        },
-        offeredAmount: {
-          type: Number,
-          min: 0,
-        },
-        responseAmount: {
-          type: Number,
-          min: 0,
-        },
-        notes: {
-          type: String,
-          required: true,
-        },
-        outcome: String,
-      },
-    ],
-
-    relatedDocuments: [
-      {
-        documentId: {
-          type: Schema.Types.ObjectId,
-          ref: 'Document',
-          required: true,
-        },
-        description: {
-          type: String,
-          required: true,
-        },
-      },
-    ],
-
-    dates: {
-      identifiedDate: {
-        type: Date,
-        default: Date.now,
-      },
-      noticeReceivedDate: Date,
-      responseDeadline: {
-        type: Date,
-        index: true,
-      },
-      lastContactDate: Date,
-      resolvedDate: Date,
-    },
-
-    notes: String,
+    notes: { type: String },
   },
   {
     timestamps: true,
@@ -230,23 +148,13 @@ const LienSchema = new Schema<ILien>(
   }
 );
 
-LienSchema.index({ caseId: 1, type: 1 });
+LienSchema.pre('save', function (next) {
+  this.remainingBalance = this.currentAmount - this.amountPaid;
+  next();
+});
+
+LienSchema.index({ caseId: 1, lienType: 1 });
 LienSchema.index({ caseId: 1, status: 1 });
-LienSchema.index({ status: 1, 'dates.responseDeadline': 1 });
-LienSchema.index({ caseId: 1, priority: 1 });
+LienSchema.index({ status: 1, dueDate: 1 });
 
-LienSchema.virtual('remainingBalance').get(function () {
-  return (
-    this.amounts.currentBalance -
-    this.amounts.paidAmount -
-    this.amounts.waivedAmount
-  );
-});
-
-LienSchema.virtual('savings').get(function () {
-  if (!this.amounts.negotiatedAmount) return 0;
-  return this.amounts.originalClaimed - this.amounts.negotiatedAmount;
-});
-
-export default mongoose.models.Lien ||
-  mongoose.model<ILien>('Lien', LienSchema);
+export default mongoose.models.Lien || mongoose.model<ILien>('Lien', LienSchema);

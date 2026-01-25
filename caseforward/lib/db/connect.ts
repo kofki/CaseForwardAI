@@ -8,46 +8,32 @@ if (!MONGODB_URI) {
   );
 }
 
-console.log('MONGODB_URI:', process.env.MONGODB_URI);
-
-/**
- * Global is used here to maintain a cached connection across hot reloads
- * in development. This prevents connections growing exponentially
- * during API Route usage.
- */
-
-interface MongooseCache {
-  conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose> | null;
-}
-
-// Declare global type
 declare global {
-  var mongoose: MongooseCache | undefined;
+  // Use a different global name to avoid colliding with the imported `mongoose` symbol
+  var mongooseCache: {
+    conn: typeof mongoose | null;
+    promise: Promise<typeof mongoose> | null;
+  } | undefined;
 }
 
-let cached: MongooseCache = global.mongoose || { conn: null, promise: null };
+let cached: { conn: typeof mongoose | null; promise: Promise<typeof mongoose> | null } =
+  global.mongooseCache ?? (global.mongooseCache = { conn: null, promise: null });
 
-if (!global.mongoose) {
-  global.mongoose = cached;
-}
-
-async function connectToDatabase() {
-  // If we have a connection, return it
+async function connectDB(): Promise<typeof mongoose> {
   if (cached.conn) {
-    console.log('📦 Using cached database connection');
     return cached.conn;
   }
 
-  // If no promise exists, create one
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
     };
 
-    console.log('🔌 Connecting to MongoDB...');
     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
-      console.log('✅ Connected to MongoDB!');
+      console.log('MongoDB connected successfully');
       return mongoose;
     });
   }
@@ -56,11 +42,23 @@ async function connectToDatabase() {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
-    console.error('❌ MongoDB connection error:', e);
     throw e;
   }
 
   return cached.conn;
 }
 
-export default connectToDatabase;
+export default connectDB;
+
+export async function disconnectDB(): Promise<void> {
+  if (cached.conn) {
+    await mongoose.disconnect();
+    cached.conn = null;
+    cached.promise = null;
+    console.log('MongoDB disconnected');
+  }
+}
+
+export function isConnected(): boolean {
+  return mongoose.connection.readyState === 1;
+}

@@ -1,6 +1,4 @@
-// lib/db/models/Case.ts
-
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document as MongoDocument } from 'mongoose';
 import {
   CaseType,
   CaseStatus,
@@ -8,108 +6,126 @@ import {
   CASE_STATUSES,
 } from '../types/enums';
 
-export interface ICase extends Document {
+export interface IClient {
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  dateOfBirth?: Date;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+  };
+}
+
+export interface IFinancials {
+  totalMedicalBills: number;
+  totalMedicalPaid: number;
+  lostWages: number;
+  propertyDamage: number;
+  painAndSuffering: number;
+  settlementAmount: number;
+  attorneyFees: number;
+  caseCosts: number;
+  netToClient: number;
+}
+
+export interface IAIMetadata {
+  lastProcessedAt?: Date;
+  summary?: string;
+  keyIssues: string[];
+  missingDocuments: string[];
+  nextSteps: string[];
+  riskFlags: string[];
+  confidenceScore: number;
+}
+
+export interface ICase extends MongoDocument {
   caseNumber: string;
-  fileNumber: string;
+  fileNumber?: string;
+
   caseType: CaseType;
   status: CaseStatus;
 
-  client: {
-    name: string;
-    email: string;
-    phone: string;
-    address?: string;
-    dateOfBirth?: Date;
-  };
+  client: IClient;
+  defendant?: string;
+  defendantInsurance?: string;
+  attorney?: string;
+  paralegal?: string;
 
-  incident: {
-    date: Date;
-    time?: string;
-    location: {
-      address?: string;
-      city: string;
-      state: string;
-      zipCode?: string;
-      county?: string;
-    };
-    description: string;
-    policeReportNumber?: string;
-  };
+  incidentDate?: Date;
+  filedDate?: Date;
+  statuteOfLimitationsDate?: Date;
+  closedDate?: Date;
 
-  defendants: Array<{
-    name: string;
-    type: 'individual' | 'company' | 'government';
-    address?: string;
-  }>;
+  incidentDescription?: string;
+  incidentLocation?: string;
+  injuries: string[];
 
-  insurance: {
-    clientPolicy?: {
-      carrier: string;
-      policyNumber: string;
-      coverageType: string;
-    };
-    defendantPolicy: {
-      carrier: string;
-      policyNumber?: string;
-      claimNumber: string;
-      policyLimit?: number;
-      adjuster: {
-        name: string;
-        phone: string;
-        email: string;
-        fax?: string;
-      };
-    };
-  };
+  financials: IFinancials;
 
-  dates: {
-    incidentDate: Date;
-    intakeDate: Date;
-    statuteOfLimitations: Date;
-    demandSentDate?: Date;
-    settlementDate?: Date;
-  };
+  aiMetadata: IAIMetadata;
 
-  financials: {
-    totalMedicalBills: number;
-    totalLiens: number;
-    lostWages: number;
-    propertyDamage: number;
-    demandAmount?: number;
-    settlementAmount?: number;
-    attorneyFees?: number;
-    clientRecovery?: number;
-  };
+  documentCount: number;
+  pendingActionCount: number;
 
-  evidenceChecklist: {
-    clientIntake: boolean;
-    retainerSigned: boolean;
-    policeReport: boolean;
-    medicalRecords: boolean;
-    medicalBills: boolean;
-    incidentPhotos: boolean;
-    witnessStatements: boolean;
-    payStubs: boolean;
-    employerLetter: boolean;
-    insuranceDocs: boolean;
-  };
-
-  team: {
-    leadAttorney: string;
-    paralegal?: string;
-    caseManager?: string;
-  };
-
-  aiMetadata: {
-    lastAnalyzedAt?: Date;
-    pendingActions: number;
-    completedActions: number;
-    flags: string[];
-  };
+  notes?: string;
+  tags: string[];
 
   createdAt: Date;
   updatedAt: Date;
+
+  daysUntilStatuteExpires?: number;
+  totalDamages?: number;
+  clientFullName?: string;
 }
+
+const ClientSchema = new Schema<IClient>(
+  {
+    firstName: { type: String, required: true, trim: true },
+    lastName: { type: String, required: true, trim: true },
+    email: { type: String, trim: true, lowercase: true },
+    phone: { type: String, trim: true },
+    dateOfBirth: { type: Date },
+    address: {
+      street: String,
+      city: String,
+      state: String,
+      zip: String,
+    },
+  },
+  { _id: false }
+);
+
+const FinancialsSchema = new Schema<IFinancials>(
+  {
+    totalMedicalBills: { type: Number, default: 0, min: 0 },
+    totalMedicalPaid: { type: Number, default: 0, min: 0 },
+    lostWages: { type: Number, default: 0, min: 0 },
+    propertyDamage: { type: Number, default: 0, min: 0 },
+    painAndSuffering: { type: Number, default: 0, min: 0 },
+    settlementAmount: { type: Number, default: 0, min: 0 },
+    attorneyFees: { type: Number, default: 0, min: 0 },
+    caseCosts: { type: Number, default: 0, min: 0 },
+    netToClient: { type: Number, default: 0, min: 0 },
+  },
+  { _id: false }
+);
+
+const AIMetadataSchema = new Schema<IAIMetadata>(
+  {
+    lastProcessedAt: { type: Date },
+    summary: { type: String },
+    keyIssues: { type: [String], default: [] },
+    missingDocuments: { type: [String], default: [] },
+    nextSteps: { type: [String], default: [] },
+    riskFlags: { type: [String], default: [] },
+    confidenceScore: { type: Number, default: 0, min: 0, max: 1 },
+  },
+  { _id: false }
+);
 
 const CaseSchema = new Schema<ICase>(
   {
@@ -122,9 +138,8 @@ const CaseSchema = new Schema<ICase>(
     },
     fileNumber: {
       type: String,
-      required: [true, 'File number is required'],
-      unique: true,
       trim: true,
+      sparse: true,
     },
 
     caseType: {
@@ -148,230 +163,95 @@ const CaseSchema = new Schema<ICase>(
     },
 
     client: {
-      name: {
-        type: String,
-        required: [true, 'Client name is required'],
-        trim: true,
-      },
-      email: {
-        type: String,
-        required: [true, 'Client email is required'],
-        trim: true,
-        lowercase: true,
-      },
-      phone: {
-        type: String,
-        required: [true, 'Client phone is required'],
-        trim: true,
-      },
-      address: {
-        type: String,
-        trim: true,
-      },
-      dateOfBirth: {
-        type: Date,
-      },
+      type: ClientSchema,
+      required: [true, 'Client information is required'],
     },
+    defendant: { type: String, trim: true },
+    defendantInsurance: { type: String, trim: true },
+    attorney: { type: String, trim: true },
+    paralegal: { type: String, trim: true },
 
-    incident: {
-      date: {
-        type: Date,
-        required: [true, 'Incident date is required'],
-      },
-      time: {
-        type: String,
-      },
-      location: {
-        address: String,
-        city: {
-          type: String,
-          required: [true, 'Incident city is required'],
-        },
-        state: {
-          type: String,
-          required: [true, 'Incident state is required'],
-        },
-        zipCode: String,
-        county: String,
-      },
-      description: {
-        type: String,
-        required: [true, 'Incident description is required'],
-      },
-      policeReportNumber: String,
-    },
+    incidentDate: { type: Date, index: true },
+    filedDate: { type: Date },
+    statuteOfLimitationsDate: { type: Date, index: true },
+    closedDate: { type: Date },
 
-    defendants: [
-      {
-        name: {
-          type: String,
-          required: true,
-        },
-        type: {
-          type: String,
-          enum: ['individual', 'company', 'government'],
-          default: 'individual',
-        },
-        address: String,
-      },
-    ],
-
-    insurance: {
-      clientPolicy: {
-        carrier: String,
-        policyNumber: String,
-        coverageType: String,
-      },
-      defendantPolicy: {
-        carrier: {
-          type: String,
-          required: [true, 'Defendant insurance carrier is required'],
-        },
-        policyNumber: String,
-        claimNumber: {
-          type: String,
-          required: [true, 'Claim number is required'],
-          index: true,
-        },
-        policyLimit: Number,
-        adjuster: {
-          name: {
-            type: String,
-            required: [true, 'Adjuster name is required'],
-          },
-          phone: {
-            type: String,
-            required: [true, 'Adjuster phone is required'],
-          },
-          email: {
-            type: String,
-            required: [true, 'Adjuster email is required'],
-          },
-          fax: String,
-        },
-      },
-    },
-
-    dates: {
-      incidentDate: {
-        type: Date,
-        required: [true, 'Incident date is required'],
-      },
-      intakeDate: {
-        type: Date,
-        default: Date.now,
-      },
-      statuteOfLimitations: {
-        type: Date,
-        required: [true, 'Statute of limitations date is required'],
-        index: true,
-      },
-      demandSentDate: Date,
-      settlementDate: Date,
-    },
+    incidentDescription: { type: String },
+    incidentLocation: { type: String },
+    injuries: { type: [String], default: [] },
 
     financials: {
-      totalMedicalBills: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      totalLiens: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      lostWages: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      propertyDamage: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      demandAmount: {
-        type: Number,
-        min: 0,
-      },
-      settlementAmount: {
-        type: Number,
-        min: 0,
-      },
-      attorneyFees: {
-        type: Number,
-        min: 0,
-      },
-      clientRecovery: {
-        type: Number,
-        min: 0,
-      },
-    },
-
-    evidenceChecklist: {
-      clientIntake: { type: Boolean, default: false },
-      retainerSigned: { type: Boolean, default: false },
-      policeReport: { type: Boolean, default: false },
-      medicalRecords: { type: Boolean, default: false },
-      medicalBills: { type: Boolean, default: false },
-      incidentPhotos: { type: Boolean, default: false },
-      witnessStatements: { type: Boolean, default: false },
-      payStubs: { type: Boolean, default: false },
-      employerLetter: { type: Boolean, default: false },
-      insuranceDocs: { type: Boolean, default: false },
-    },
-
-    team: {
-      leadAttorney: {
-        type: String,
-        required: [true, 'Lead attorney is required'],
-      },
-      paralegal: String,
-      caseManager: String,
+      type: FinancialsSchema,
+      default: () => ({}),
     },
 
     aiMetadata: {
-      lastAnalyzedAt: Date,
-      pendingActions: {
-        type: Number,
-        default: 0,
-      },
-      completedActions: {
-        type: Number,
-        default: 0,
-      },
-      flags: [String],
+      type: AIMetadataSchema,
+      default: () => ({}),
     },
+
+    documentCount: { type: Number, default: 0, min: 0 },
+    pendingActionCount: { type: Number, default: 0, min: 0 },
+
+    notes: { type: String },
+    tags: { type: [String], default: [], index: true },
   },
   {
     timestamps: true,
     collection: 'cases',
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
 
-CaseSchema.index({ status: 1, 'dates.statuteOfLimitations': 1 });
-CaseSchema.index({ 'team.leadAttorney': 1, status: 1 });
-CaseSchema.index({ caseType: 1, status: 1 });
-CaseSchema.index({ 'client.email': 1 });
-CaseSchema.index({ createdAt: -1 });
-
-CaseSchema.virtual('daysUntilSOL').get(function () {
-  if (!this.dates.statuteOfLimitations) return null;
+CaseSchema.virtual('daysUntilStatuteExpires').get(function () {
+  if (!this.statuteOfLimitationsDate) return undefined;
   const now = new Date();
-  const sol = new Date(this.dates.statuteOfLimitations);
-  const diffTime = sol.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
+  const diffTime = this.statuteOfLimitationsDate.getTime() - now.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 });
 
 CaseSchema.virtual('totalDamages').get(function () {
+  const f = this.financials;
   return (
-    (this.financials.totalMedicalBills || 0) +
-    (this.financials.lostWages || 0) +
-    (this.financials.propertyDamage || 0)
+    (f?.totalMedicalBills || 0) +
+    (f?.lostWages || 0) +
+    (f?.propertyDamage || 0) +
+    (f?.painAndSuffering || 0)
   );
 });
 
-export default mongoose.models.Case ||
-  mongoose.model<ICase>('Case', CaseSchema);
+CaseSchema.virtual('clientFullName').get(function () {
+  if (!this.client) return undefined;
+  return `${this.client.firstName} ${this.client.lastName}`;
+});
+
+CaseSchema.index({ status: 1, caseType: 1 });
+CaseSchema.index({ 'client.lastName': 1, 'client.firstName': 1 });
+CaseSchema.index({ statuteOfLimitationsDate: 1, status: 1 });
+CaseSchema.index({ createdAt: -1 });
+CaseSchema.index({ updatedAt: -1 });
+
+CaseSchema.index(
+  {
+    caseNumber: 'text',
+    'client.firstName': 'text',
+    'client.lastName': 'text',
+    defendant: 'text',
+    incidentDescription: 'text',
+    notes: 'text',
+  },
+  {
+    name: 'case_text_search',
+    weights: {
+      caseNumber: 10,
+      'client.lastName': 8,
+      'client.firstName': 8,
+      defendant: 5,
+      incidentDescription: 2,
+      notes: 1,
+    },
+  }
+);
+
+export default mongoose.models.Case || mongoose.model<ICase>('Case', CaseSchema);

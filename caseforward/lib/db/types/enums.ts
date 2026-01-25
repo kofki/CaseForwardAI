@@ -1,5 +1,3 @@
-// lib/db/types/enums.ts
-
 export enum CaseType {
   AUTO_ACCIDENT = 'auto_accident',
   PREMISES_LIABILITY = 'premises_liability',
@@ -7,6 +5,7 @@ export enum CaseType {
   WRONGFUL_DEATH = 'wrongful_death',
   SLIP_AND_FALL = 'slip_and_fall',
   PRODUCT_LIABILITY = 'product_liability',
+  WORKERS_COMP = 'workers_comp',
   OTHER = 'other',
 }
 
@@ -17,19 +16,9 @@ export const CaseTypeLabels: Record<CaseType, string> = {
   [CaseType.WRONGFUL_DEATH]: 'Wrongful Death',
   [CaseType.SLIP_AND_FALL]: 'Slip and Fall',
   [CaseType.PRODUCT_LIABILITY]: 'Product Liability',
+  [CaseType.WORKERS_COMP]: 'Workers Compensation',
   [CaseType.OTHER]: 'Other',
 };
-
-export const CaseTypeDescriptions: Record<CaseType, string> = {
-  [CaseType.AUTO_ACCIDENT]: 'Car, truck, motorcycle, or other vehicle crashes',
-  [CaseType.PREMISES_LIABILITY]: 'Injuries occurring on someone else\'s property',
-  [CaseType.MEDICAL_MALPRACTICE]: 'Injuries caused by doctor or hospital negligence',
-  [CaseType.WRONGFUL_DEATH]: 'Death caused by another party\'s negligence',
-  [CaseType.SLIP_AND_FALL]: 'Falls due to hazardous conditions',
-  [CaseType.PRODUCT_LIABILITY]: 'Injuries caused by defective products',
-  [CaseType.OTHER]: 'Other personal injury cases',
-};
-
 
 export enum CaseStatus {
   INTAKE = 'intake',
@@ -55,18 +44,6 @@ export const CaseStatusLabels: Record<CaseStatus, string> = {
   [CaseStatus.CLOSED]: 'Closed',
 };
 
-export const CaseStatusDescriptions: Record<CaseStatus, string> = {
-  [CaseStatus.INTAKE]: 'New case - gathering initial information',
-  [CaseStatus.INVESTIGATION]: 'Collecting evidence and building the case',
-  [CaseStatus.TREATMENT]: 'Client is still receiving medical treatment',
-  [CaseStatus.DEMAND_PREP]: 'Preparing the demand package for insurance',
-  [CaseStatus.NEGOTIATION]: 'Negotiating settlement with insurance company',
-  [CaseStatus.LITIGATION]: 'Lawsuit has been filed',
-  [CaseStatus.TRIAL]: 'Case is going to trial',
-  [CaseStatus.SETTLED]: 'Case has been settled',
-  [CaseStatus.CLOSED]: 'Case is complete and closed',
-};
-
 export const CaseStatusOrder: CaseStatus[] = [
   CaseStatus.INTAKE,
   CaseStatus.INVESTIGATION,
@@ -79,112 +56,251 @@ export const CaseStatusOrder: CaseStatus[] = [
   CaseStatus.CLOSED,
 ];
 
+export enum DocumentStatus {
+  UPLOADING = 'uploading',
+  EXTRACTING = 'extracting',
+  ANALYZING = 'analyzing',
+  PENDING_ASSIGNMENT = 'pending_assignment',
+  ASSIGNED = 'assigned',
+  PROCESSING = 'processing',
+  PROCESSED = 'processed',
+  REVIEWED = 'reviewed',
+  REJECTED = 'rejected',
+  EXTRACTION_FAILED = 'extraction_failed',
+  ANALYSIS_FAILED = 'analysis_failed',
+}
+
+export const DocumentStatusLabels: Record<DocumentStatus, string> = {
+  [DocumentStatus.UPLOADING]: 'Uploading',
+  [DocumentStatus.EXTRACTING]: 'Extracting Content',
+  [DocumentStatus.ANALYZING]: 'AI Analyzing',
+  [DocumentStatus.PENDING_ASSIGNMENT]: 'Pending Case Assignment',
+  [DocumentStatus.ASSIGNED]: 'Assigned to Case',
+  [DocumentStatus.PROCESSING]: 'Round Table Processing',
+  [DocumentStatus.PROCESSED]: 'Processed',
+  [DocumentStatus.REVIEWED]: 'Reviewed',
+  [DocumentStatus.REJECTED]: 'Rejected',
+  [DocumentStatus.EXTRACTION_FAILED]: 'Extraction Failed',
+  [DocumentStatus.ANALYSIS_FAILED]: 'Analysis Failed',
+};
+
 export enum DocumentCategory {
-  CLIENT_INTAKE = 'client_intake',
-  RETAINER_AGREEMENT = 'retainer_agreement',
   MEDICAL_RECORD = 'medical_record',
   MEDICAL_BILL = 'medical_bill',
   DIAGNOSTIC_IMAGING = 'diagnostic_imaging',
-  PHARMACY_RECORDS = 'pharmacy_records',
+  PHARMACY_RECORD = 'pharmacy_record',
   POLICE_REPORT = 'police_report',
-  INCIDENT_PHOTOS = 'incident_photos',
+  INCIDENT_PHOTO = 'incident_photo',
   WITNESS_STATEMENT = 'witness_statement',
-  PAY_STUBS = 'pay_stubs',
+  PAY_STUB = 'pay_stub',
   EMPLOYER_LETTER = 'employer_letter',
-  INSURANCE_DOCS = 'insurance_docs',
+  TAX_DOCUMENT = 'tax_document',
+  INSURANCE_POLICY = 'insurance_policy',
+  INSURANCE_CLAIM = 'insurance_claim',
+  DENIAL_LETTER = 'denial_letter',
+  RETAINER_AGREEMENT = 'retainer_agreement',
   DEMAND_LETTER = 'demand_letter',
-  SETTLEMENT_DOCS = 'settlement_docs',
+  SETTLEMENT_DOCUMENT = 'settlement_document',
+  COURT_FILING = 'court_filing',
+  CLIENT_CORRESPONDENCE = 'client_correspondence',
+  PROVIDER_CORRESPONDENCE = 'provider_correspondence',
+  CLIENT_INTAKE = 'client_intake',
   OTHER = 'other',
 }
 
 export const DocumentCategoryLabels: Record<DocumentCategory, string> = {
-  [DocumentCategory.CLIENT_INTAKE]: 'Client Intake Form',
-  [DocumentCategory.RETAINER_AGREEMENT]: 'Retainer Agreement',
   [DocumentCategory.MEDICAL_RECORD]: 'Medical Records',
   [DocumentCategory.MEDICAL_BILL]: 'Medical Bills',
   [DocumentCategory.DIAGNOSTIC_IMAGING]: 'Diagnostic Imaging',
-  [DocumentCategory.PHARMACY_RECORDS]: 'Pharmacy Records',
+  [DocumentCategory.PHARMACY_RECORD]: 'Pharmacy Records',
   [DocumentCategory.POLICE_REPORT]: 'Police Report',
-  [DocumentCategory.INCIDENT_PHOTOS]: 'Incident Photos',
+  [DocumentCategory.INCIDENT_PHOTO]: 'Incident Photos',
   [DocumentCategory.WITNESS_STATEMENT]: 'Witness Statement',
-  [DocumentCategory.PAY_STUBS]: 'Pay Stubs',
+  [DocumentCategory.PAY_STUB]: 'Pay Stubs',
   [DocumentCategory.EMPLOYER_LETTER]: 'Employer Letter',
-  [DocumentCategory.INSURANCE_DOCS]: 'Insurance Documents',
+  [DocumentCategory.TAX_DOCUMENT]: 'Tax Documents',
+  [DocumentCategory.INSURANCE_POLICY]: 'Insurance Policy',
+  [DocumentCategory.INSURANCE_CLAIM]: 'Insurance Claim',
+  [DocumentCategory.DENIAL_LETTER]: 'Denial Letter',
+  [DocumentCategory.RETAINER_AGREEMENT]: 'Retainer Agreement',
   [DocumentCategory.DEMAND_LETTER]: 'Demand Letter',
-  [DocumentCategory.SETTLEMENT_DOCS]: 'Settlement Documents',
+  [DocumentCategory.SETTLEMENT_DOCUMENT]: 'Settlement Documents',
+  [DocumentCategory.COURT_FILING]: 'Court Filing',
+  [DocumentCategory.CLIENT_CORRESPONDENCE]: 'Client Correspondence',
+  [DocumentCategory.PROVIDER_CORRESPONDENCE]: 'Provider Correspondence',
+  [DocumentCategory.CLIENT_INTAKE]: 'Client Intake Form',
   [DocumentCategory.OTHER]: 'Other',
 };
 
-export const DocumentCategoryDescriptions: Record<DocumentCategory, string> = {
-  [DocumentCategory.CLIENT_INTAKE]: 'Initial client information, accident details, and injury description',
-  [DocumentCategory.RETAINER_AGREEMENT]: 'Signed attorney-client agreement',
-  [DocumentCategory.MEDICAL_RECORD]: 'Hospital records, ER visits, doctor notes, treatment records',
-  [DocumentCategory.MEDICAL_BILL]: 'Bills and invoices from healthcare providers',
-  [DocumentCategory.DIAGNOSTIC_IMAGING]: 'X-rays, MRIs, CT scans, and other imaging',
-  [DocumentCategory.PHARMACY_RECORDS]: 'Prescription records and medication history',
-  [DocumentCategory.POLICE_REPORT]: 'Official police accident report',
-  [DocumentCategory.INCIDENT_PHOTOS]: 'Photos of accident scene, vehicle damage, injuries',
-  [DocumentCategory.WITNESS_STATEMENT]: 'Written statements from witnesses',
-  [DocumentCategory.PAY_STUBS]: 'Pay stubs showing income before accident',
-  [DocumentCategory.EMPLOYER_LETTER]: 'Letter from employer verifying lost wages',
-  [DocumentCategory.INSURANCE_DOCS]: 'Insurance policies, claim documents, denial letters',
-  [DocumentCategory.DEMAND_LETTER]: 'Settlement demand sent to insurance company',
-  [DocumentCategory.SETTLEMENT_DOCS]: 'Settlement agreements, releases, disbursement sheets',
-  [DocumentCategory.OTHER]: 'Other relevant documents',
-};
-
 export const DocumentCategoryGroups = {
-  'Core Intake': [
-    DocumentCategory.CLIENT_INTAKE,
-    DocumentCategory.RETAINER_AGREEMENT,
-  ],
   'Medical': [
     DocumentCategory.MEDICAL_RECORD,
     DocumentCategory.MEDICAL_BILL,
     DocumentCategory.DIAGNOSTIC_IMAGING,
-    DocumentCategory.PHARMACY_RECORDS,
+    DocumentCategory.PHARMACY_RECORD,
   ],
   'Incident': [
     DocumentCategory.POLICE_REPORT,
-    DocumentCategory.INCIDENT_PHOTOS,
+    DocumentCategory.INCIDENT_PHOTO,
     DocumentCategory.WITNESS_STATEMENT,
   ],
   'Financial': [
-    DocumentCategory.PAY_STUBS,
+    DocumentCategory.PAY_STUB,
     DocumentCategory.EMPLOYER_LETTER,
-    DocumentCategory.INSURANCE_DOCS,
+    DocumentCategory.TAX_DOCUMENT,
+  ],
+  'Insurance': [
+    DocumentCategory.INSURANCE_POLICY,
+    DocumentCategory.INSURANCE_CLAIM,
+    DocumentCategory.DENIAL_LETTER,
   ],
   'Legal': [
+    DocumentCategory.RETAINER_AGREEMENT,
     DocumentCategory.DEMAND_LETTER,
-    DocumentCategory.SETTLEMENT_DOCS,
+    DocumentCategory.SETTLEMENT_DOCUMENT,
+    DocumentCategory.COURT_FILING,
+  ],
+  'Communication': [
+    DocumentCategory.CLIENT_CORRESPONDENCE,
+    DocumentCategory.PROVIDER_CORRESPONDENCE,
+  ],
+  'Intake': [
+    DocumentCategory.CLIENT_INTAKE,
   ],
   'Other': [
     DocumentCategory.OTHER,
   ],
 };
 
-export enum DocumentStatus {
-  PENDING = 'pending',
-  RECEIVED = 'received',
-  UNDER_REVIEW = 'under_review',
-  APPROVED = 'approved',
-  REJECTED = 'rejected',
+export enum ActionType {
+  SEND_EMAIL = 'send_email',
+  SEND_TEXT = 'send_text',
+  SCHEDULE_CALL = 'schedule_call',
+  REQUEST_DOCUMENT = 'request_document',
+  REQUEST_RECORDS = 'request_records',
+  UPDATE_CASE_STATUS = 'update_case_status',
+  FLAG_FOR_REVIEW = 'flag_for_review',
+  ADD_CASE_NOTE = 'add_case_note',
+  CATEGORIZE_DOCUMENT = 'categorize_document',
+  ASSIGN_DOCUMENT = 'assign_document',
+  GENERAL_RECOMMENDATION = 'general_recommendation',
 }
 
-export const DocumentStatusLabels: Record<DocumentStatus, string> = {
-  [DocumentStatus.PENDING]: 'Pending',
-  [DocumentStatus.RECEIVED]: 'Received',
-  [DocumentStatus.UNDER_REVIEW]: 'Under Review',
-  [DocumentStatus.APPROVED]: 'Approved',
-  [DocumentStatus.REJECTED]: 'Rejected',
+export const ActionTypeLabels: Record<ActionType, string> = {
+  [ActionType.SEND_EMAIL]: 'Send Email',
+  [ActionType.SEND_TEXT]: 'Send Text Message',
+  [ActionType.SCHEDULE_CALL]: 'Schedule Call',
+  [ActionType.REQUEST_DOCUMENT]: 'Request Document',
+  [ActionType.REQUEST_RECORDS]: 'Request Records',
+  [ActionType.UPDATE_CASE_STATUS]: 'Update Case Status',
+  [ActionType.FLAG_FOR_REVIEW]: 'Flag for Review',
+  [ActionType.ADD_CASE_NOTE]: 'Add Case Note',
+  [ActionType.CATEGORIZE_DOCUMENT]: 'Categorize Document',
+  [ActionType.ASSIGN_DOCUMENT]: 'Assign Document to Case',
+  [ActionType.GENERAL_RECOMMENDATION]: 'General Recommendation',
 };
 
-export const DocumentStatusDescriptions: Record<DocumentStatus, string> = {
-  [DocumentStatus.PENDING]: 'Document has been requested but not yet received',
-  [DocumentStatus.RECEIVED]: 'Document received but not yet reviewed',
-  [DocumentStatus.UNDER_REVIEW]: 'Document is being reviewed by the team',
-  [DocumentStatus.APPROVED]: 'Document has been reviewed and approved',
-  [DocumentStatus.REJECTED]: 'Document rejected (duplicate, irrelevant, or incomplete)',
+export enum ActionStatus {
+  PENDING = 'pending',
+  AWAITING_REVIEW = 'awaiting_review',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+  EXECUTED = 'executed',
+  FAILED = 'failed',
+  EXPIRED = 'expired',
+}
+
+export const ActionStatusLabels: Record<ActionStatus, string> = {
+  [ActionStatus.PENDING]: 'Pending',
+  [ActionStatus.AWAITING_REVIEW]: 'Awaiting Review',
+  [ActionStatus.APPROVED]: 'Approved',
+  [ActionStatus.REJECTED]: 'Rejected',
+  [ActionStatus.EXECUTED]: 'Executed',
+  [ActionStatus.FAILED]: 'Failed',
+  [ActionStatus.EXPIRED]: 'Expired',
+};
+
+export enum ActionPriority {
+  CRITICAL = 1,
+  HIGH = 2,
+  MEDIUM = 3,
+  LOW = 4,
+}
+
+export const ActionPriorityLabels: Record<ActionPriority, string> = {
+  [ActionPriority.CRITICAL]: 'Critical',
+  [ActionPriority.HIGH]: 'High',
+  [ActionPriority.MEDIUM]: 'Medium',
+  [ActionPriority.LOW]: 'Low',
+};
+
+export enum AgentType {
+  ORCHESTRATOR = 'orchestrator',
+  CLIENT_GURU = 'client_guru',
+  EVIDENCE_ANALYZER = 'evidence_analyzer',
+  SYSTEM = 'system',
+}
+
+export const AgentTypeLabels: Record<AgentType, string> = {
+  [AgentType.ORCHESTRATOR]: 'Orchestrator',
+  [AgentType.CLIENT_GURU]: 'Client Guru',
+  [AgentType.EVIDENCE_ANALYZER]: 'Evidence Analyzer',
+  [AgentType.SYSTEM]: 'System',
+};
+
+export const AgentTypeEmojis: Record<AgentType, string> = {
+  [AgentType.ORCHESTRATOR]: '🎯',
+  [AgentType.CLIENT_GURU]: '👤',
+  [AgentType.EVIDENCE_ANALYZER]: '🔍',
+  [AgentType.SYSTEM]: '⚙️',
+};
+
+export enum AuditEventType {
+  DOCUMENT_UPLOADED = 'document_uploaded',
+  DOCUMENT_EXTRACTED = 'document_extracted',
+  DOCUMENT_ANALYZED = 'document_analyzed',
+  DOCUMENT_ASSIGNED = 'document_assigned',
+  ROUND_TABLE_STARTED = 'round_table_started',
+  ROUND_TABLE_COMPLETED = 'round_table_completed',
+  AGENT_RESPONSE = 'agent_response',
+  ACTION_CREATED = 'action_created',
+  ACTION_APPROVED = 'action_approved',
+  ACTION_REJECTED = 'action_rejected',
+  ACTION_EXECUTED = 'action_executed',
+  SYSTEM_ERROR = 'system_error',
+  USER_LOGIN = 'user_login',
+}
+
+export const AuditEventTypeLabels: Record<AuditEventType, string> = {
+  [AuditEventType.DOCUMENT_UPLOADED]: 'Document Uploaded',
+  [AuditEventType.DOCUMENT_EXTRACTED]: 'Document Extracted',
+  [AuditEventType.DOCUMENT_ANALYZED]: 'Document Analyzed',
+  [AuditEventType.DOCUMENT_ASSIGNED]: 'Document Assigned',
+  [AuditEventType.ROUND_TABLE_STARTED]: 'Round Table Started',
+  [AuditEventType.ROUND_TABLE_COMPLETED]: 'Round Table Completed',
+  [AuditEventType.AGENT_RESPONSE]: 'Agent Response',
+  [AuditEventType.ACTION_CREATED]: 'Action Created',
+  [AuditEventType.ACTION_APPROVED]: 'Action Approved',
+  [AuditEventType.ACTION_REJECTED]: 'Action Rejected',
+  [AuditEventType.ACTION_EXECUTED]: 'Action Executed',
+  [AuditEventType.SYSTEM_ERROR]: 'System Error',
+  [AuditEventType.USER_LOGIN]: 'User Login',
+};
+
+export enum SeverityLevel {
+  DEBUG = 'debug',
+  INFO = 'info',
+  WARNING = 'warning',
+  ERROR = 'error',
+  CRITICAL = 'critical',
+}
+
+export const SeverityLevelLabels: Record<SeverityLevel, string> = {
+  [SeverityLevel.DEBUG]: 'Debug',
+  [SeverityLevel.INFO]: 'Info',
+  [SeverityLevel.WARNING]: 'Warning',
+  [SeverityLevel.ERROR]: 'Error',
+  [SeverityLevel.CRITICAL]: 'Critical',
 };
 
 export enum LienType {
@@ -209,28 +325,6 @@ export const LienTypeLabels: Record<LienType, string> = {
   [LienType.OTHER]: 'Other',
 };
 
-export const LienTypeDescriptions: Record<LienType, string> = {
-  [LienType.MEDICARE]: 'Federal Medicare conditional payment lien',
-  [LienType.MEDICAID]: 'State Medicaid reimbursement lien',
-  [LienType.HEALTH_INSURANCE]: 'Private health insurance subrogation claim',
-  [LienType.HOSPITAL]: 'Hospital lien for unpaid services',
-  [LienType.PROVIDER]: 'Doctor or specialist lien',
-  [LienType.ERISA]: 'Employer health plan (ERISA) subrogation',
-  [LienType.WORKERS_COMP]: 'Workers compensation lien',
-  [LienType.OTHER]: 'Other type of lien',
-};
-
-export const LienTypePriority: Record<LienType, number> = {
-  [LienType.MEDICARE]: 1,
-  [LienType.MEDICAID]: 2,
-  [LienType.ERISA]: 3,  
-  [LienType.HEALTH_INSURANCE]: 4,
-  [LienType.HOSPITAL]: 5,
-  [LienType.PROVIDER]: 6,
-  [LienType.WORKERS_COMP]: 7,
-  [LienType.OTHER]: 8,
-};
-
 export enum LienStatus {
   IDENTIFIED = 'identified',
   CONFIRMED = 'confirmed',
@@ -249,188 +343,56 @@ export const LienStatusLabels: Record<LienStatus, string> = {
   [LienStatus.WAIVED]: 'Waived',
 };
 
-export const LienStatusDescriptions: Record<LienStatus, string> = {
-  [LienStatus.IDENTIFIED]: 'Lien has been identified but amount not confirmed',
-  [LienStatus.CONFIRMED]: 'Lien amount has been confirmed by lienholder',
-  [LienStatus.NEGOTIATING]: 'Currently negotiating reduction of lien amount',
-  [LienStatus.DISPUTED]: 'Disputing charges included in the lien',
-  [LienStatus.PAID]: 'Lien has been paid in full',
-  [LienStatus.WAIVED]: 'Lien has been waived by lienholder',
-};
+// FEEDBACK ENUMS (Learning)
+// ============================================================================
 
-export enum AgentType {
-  ORCHESTRATOR = 'orchestrator',
-  CLIENT_GURU = 'client_guru',
-  EVIDENCE_ANALYZER = 'evidence_analyzer',
+export enum RejectionReason {
+  TONE_WRONG = 'tone_wrong',
+  INCORRECT_INFO = 'incorrect_info',
+  NOT_NEEDED = 'not_needed',
+  BAD_TIMING = 'bad_timing',
+  WRONG_RECIPIENT = 'wrong_recipient',
+  MISSING_CONTEXT = 'missing_context',
+  OTHER = 'other',
 }
 
-export const AgentTypeLabels: Record<AgentType, string> = {
-  [AgentType.ORCHESTRATOR]: 'Orchestrator',
-  [AgentType.CLIENT_GURU]: 'Client Guru',
-  [AgentType.EVIDENCE_ANALYZER]: 'Evidence Analyzer',
+export const RejectionReasonLabels: Record<RejectionReason, string> = {
+  [RejectionReason.TONE_WRONG]: 'Tone was wrong',
+  [RejectionReason.INCORRECT_INFO]: 'Incorrect information',
+  [RejectionReason.NOT_NEEDED]: 'Not needed',
+  [RejectionReason.BAD_TIMING]: 'Bad timing',
+  [RejectionReason.WRONG_RECIPIENT]: 'Wrong recipient',
+  [RejectionReason.MISSING_CONTEXT]: 'Missing context',
+  [RejectionReason.OTHER]: 'Other',
 };
 
-export const AgentTypeDescriptions: Record<AgentType, string> = {
-  [AgentType.ORCHESTRATOR]: 'Routes incoming tasks to the appropriate specialist agent',
-  [AgentType.CLIENT_GURU]: 'Drafts empathetic, professional client communications',
-  [AgentType.EVIDENCE_ANALYZER]: 'Analyzes documents, identifies missing evidence, flags issues',
-};
+// ============================================================================
+// INPUT SOURCE ENUMS
+// ============================================================================
 
-export const AgentTypeEmojis: Record<AgentType, string> = {
-  [AgentType.ORCHESTRATOR]: '🎯',
-  [AgentType.CLIENT_GURU]: '👤',
-  [AgentType.EVIDENCE_ANALYZER]: '🔍',
-};
-
-export enum ActionType {
-  SEND_CLIENT_EMAIL = 'send_client_email',
-  SEND_CLIENT_TEXT = 'send_client_text',
-  REQUEST_CLIENT_INFO = 'request_client_info',
-  REQUEST_MISSING_DOCUMENT = 'request_missing_document',
-  FLAG_DOCUMENT_ISSUE = 'flag_document_issue',
-  REVIEW_FLAGGED_ITEM = 'review_flagged_item',
-  GENERAL_RECOMMENDATION = 'general_recommendation',
-}
-
-export const ActionTypeLabels: Record<ActionType, string> = {
-  [ActionType.SEND_CLIENT_EMAIL]: 'Send Client Email',
-  [ActionType.SEND_CLIENT_TEXT]: 'Send Client Text',
-  [ActionType.REQUEST_CLIENT_INFO]: 'Request Client Information',
-  [ActionType.REQUEST_MISSING_DOCUMENT]: 'Request Missing Document',
-  [ActionType.FLAG_DOCUMENT_ISSUE]: 'Flag Document Issue',
-  [ActionType.REVIEW_FLAGGED_ITEM]: 'Review Flagged Item',
-  [ActionType.GENERAL_RECOMMENDATION]: 'General Recommendation',
-};
-
-export const ActionTypeDescriptions: Record<ActionType, string> = {
-  [ActionType.SEND_CLIENT_EMAIL]: 'Send an email communication to the client',
-  [ActionType.SEND_CLIENT_TEXT]: 'Send a text message to the client',
-  [ActionType.REQUEST_CLIENT_INFO]: 'Request additional information from the client',
-  [ActionType.REQUEST_MISSING_DOCUMENT]: 'Request a missing document for the case',
-  [ActionType.FLAG_DOCUMENT_ISSUE]: 'Flag an issue found in a document',
-  [ActionType.REVIEW_FLAGGED_ITEM]: 'Review an item that has been flagged',
-  [ActionType.GENERAL_RECOMMENDATION]: 'General case recommendation',
-};
-
-export const ActionTypeAgentMap: Record<ActionType, AgentType> = {
-  [ActionType.SEND_CLIENT_EMAIL]: AgentType.CLIENT_GURU,
-  [ActionType.SEND_CLIENT_TEXT]: AgentType.CLIENT_GURU,
-  [ActionType.REQUEST_CLIENT_INFO]: AgentType.CLIENT_GURU,
-  [ActionType.REQUEST_MISSING_DOCUMENT]: AgentType.EVIDENCE_ANALYZER,
-  [ActionType.FLAG_DOCUMENT_ISSUE]: AgentType.EVIDENCE_ANALYZER,
-  [ActionType.REVIEW_FLAGGED_ITEM]: AgentType.EVIDENCE_ANALYZER,
-  [ActionType.GENERAL_RECOMMENDATION]: AgentType.ORCHESTRATOR,
-};
-
-export enum ActionStatus {
-  PENDING = 'pending',
-  AWAITING_REVIEW = 'awaiting_review',
-  APPROVED = 'approved',
-  REJECTED = 'rejected',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
-}
-
-export const ActionStatusLabels: Record<ActionStatus, string> = {
-  [ActionStatus.PENDING]: 'Pending',
-  [ActionStatus.AWAITING_REVIEW]: 'Awaiting Review',
-  [ActionStatus.APPROVED]: 'Approved',
-  [ActionStatus.REJECTED]: 'Rejected',
-  [ActionStatus.COMPLETED]: 'Completed',
-  [ActionStatus.CANCELLED]: 'Cancelled',
-};
-
-export const ActionStatusDescriptions: Record<ActionStatus, string> = {
-  [ActionStatus.PENDING]: 'Action is being processed by AI',
-  [ActionStatus.AWAITING_REVIEW]: 'Action is ready for human review (swipe)',
-  [ActionStatus.APPROVED]: 'Action was approved (swipe right)',
-  [ActionStatus.REJECTED]: 'Action was rejected (swipe left)',
-  [ActionStatus.COMPLETED]: 'Action has been executed',
-  [ActionStatus.CANCELLED]: 'Action was cancelled',
-};
-
-export enum ActionPriority {
-  CRITICAL = 1,
-  HIGH = 2,
-  MEDIUM = 3,
-  LOW = 4,
-}
-
-export const ActionPriorityLabels: Record<ActionPriority, string> = {
-  [ActionPriority.CRITICAL]: 'Critical',
-  [ActionPriority.HIGH]: 'High',
-  [ActionPriority.MEDIUM]: 'Medium',
-  [ActionPriority.LOW]: 'Low',
-};
-
-export const ActionPriorityColors: Record<ActionPriority, string> = {
-  [ActionPriority.CRITICAL]: 'red',
-  [ActionPriority.HIGH]: 'orange',
-  [ActionPriority.MEDIUM]: 'yellow',
-  [ActionPriority.LOW]: 'green',
-};
-
-export enum AuditEventType {
-  TASK_RECEIVED = 'task_received',
-  TASK_ROUTED = 'task_routed',
-  ANALYSIS_STARTED = 'analysis_started',
-  ANALYSIS_COMPLETE = 'analysis_complete',
-  DRAFT_CREATED = 'draft_created',
-  ROUND_TABLE = 'round_table',
-  ACTION_CREATED = 'action_created',
-  SWIPE_RIGHT = 'swipe_right',
-  SWIPE_LEFT = 'swipe_left',
-  EXECUTED = 'executed',
-  ERROR = 'error',
-}
-
-export const AuditEventTypeLabels: Record<AuditEventType, string> = {
-  [AuditEventType.TASK_RECEIVED]: 'Task Received',
-  [AuditEventType.TASK_ROUTED]: 'Task Routed',
-  [AuditEventType.ANALYSIS_STARTED]: 'Analysis Started',
-  [AuditEventType.ANALYSIS_COMPLETE]: 'Analysis Complete',
-  [AuditEventType.DRAFT_CREATED]: 'Draft Created',
-  [AuditEventType.ROUND_TABLE]: 'Round Table Discussion',
-  [AuditEventType.ACTION_CREATED]: 'Action Created',
-  [AuditEventType.SWIPE_RIGHT]: 'Swipe Right (Approved)',
-  [AuditEventType.SWIPE_LEFT]: 'Swipe Left (Rejected)',
-  [AuditEventType.EXECUTED]: 'Action Executed',
-  [AuditEventType.ERROR]: 'Error',
-};
-
-export enum Severity {
-  DEBUG = 'debug',
-  INFO = 'info',
-  WARNING = 'warning',
-  ERROR = 'error',
-}
-
-export const SeverityLabels: Record<Severity, string> = {
-  [Severity.DEBUG]: 'Debug',
-  [Severity.INFO]: 'Info',
-  [Severity.WARNING]: 'Warning',
-  [Severity.ERROR]: 'Error',
-};
-
-export enum InputSourceType {
+export enum InputSource {
+  WEB_UPLOAD = 'web_upload',
   EMAIL = 'email',
-  TEXT = 'text',
-  PORTAL = 'portal',
-  DOCUMENT_UPLOAD = 'document_upload',
-  CALL_TRANSCRIPT = 'call_transcript',
-  SCHEDULED_REVIEW = 'scheduled_review',
+  TEXT_MESSAGE = 'text_message',
+  CLIENT_PORTAL = 'client_portal',
+  FAX = 'fax',
+  API = 'api',
   MANUAL = 'manual',
 }
 
-export const InputSourceTypeLabels: Record<InputSourceType, string> = {
-  [InputSourceType.EMAIL]: 'Email',
-  [InputSourceType.TEXT]: 'Text Message',
-  [InputSourceType.PORTAL]: 'Client Portal',
-  [InputSourceType.DOCUMENT_UPLOAD]: 'Document Upload',
-  [InputSourceType.CALL_TRANSCRIPT]: 'Call Transcript',
-  [InputSourceType.SCHEDULED_REVIEW]: 'Scheduled Review',
-  [InputSourceType.MANUAL]: 'Manual Entry',
+export const InputSourceLabels: Record<InputSource, string> = {
+  [InputSource.WEB_UPLOAD]: 'Web Upload',
+  [InputSource.EMAIL]: 'Email',
+  [InputSource.TEXT_MESSAGE]: 'Text Message',
+  [InputSource.CLIENT_PORTAL]: 'Client Portal',
+  [InputSource.FAX]: 'Fax',
+  [InputSource.API]: 'API',
+  [InputSource.MANUAL]: 'Manual Entry',
 };
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
 
 export function getEnumValues<T extends Record<string, string>>(enumObj: T): string[] {
   return Object.values(enumObj);
@@ -450,16 +412,21 @@ export function getEnumLabel<T extends string>(
   return labels[value] || value;
 }
 
+// ============================================================================
+// EXPORTED ARRAYS (for Mongoose enums)
+// ============================================================================
+
 export const CASE_TYPES = getEnumValues(CaseType);
 export const CASE_STATUSES = getEnumValues(CaseStatus);
-export const DOCUMENT_CATEGORIES = getEnumValues(DocumentCategory);
 export const DOCUMENT_STATUSES = getEnumValues(DocumentStatus);
-export const LIEN_TYPES = getEnumValues(LienType);
-export const LIEN_STATUSES = getEnumValues(LienStatus);
-export const AGENT_TYPES = getEnumValues(AgentType);
+export const DOCUMENT_CATEGORIES = getEnumValues(DocumentCategory);
 export const ACTION_TYPES = getEnumValues(ActionType);
 export const ACTION_STATUSES = getEnumValues(ActionStatus);
 export const ACTION_PRIORITIES = [1, 2, 3, 4];
+export const AGENT_TYPES = getEnumValues(AgentType);
 export const AUDIT_EVENT_TYPES = getEnumValues(AuditEventType);
-export const SEVERITIES = getEnumValues(Severity);
-export const INPUT_SOURCE_TYPES = getEnumValues(InputSourceType);
+export const SEVERITY_LEVELS = getEnumValues(SeverityLevel);
+export const LIEN_TYPES = getEnumValues(LienType);
+export const LIEN_STATUSES = getEnumValues(LienStatus);
+export const REJECTION_REASONS = getEnumValues(RejectionReason);
+export const INPUT_SOURCES = getEnumValues(InputSource);

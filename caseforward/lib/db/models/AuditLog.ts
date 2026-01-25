@@ -1,114 +1,129 @@
-// lib/db/models/AuditLog.ts
-
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document as MongoDocument } from 'mongoose';
 import {
-  AgentType,
   AuditEventType,
-  Severity,
-  AGENT_TYPES,
+  SeverityLevel,
+  AgentType,
   AUDIT_EVENT_TYPES,
-  SEVERITIES,
+  SEVERITY_LEVELS,
+  AGENT_TYPES,
 } from '../types/enums';
 
-export interface IAuditLog extends Document {
-  traceId: string;
-  spanId: string;
-  parentSpanId?: string;
+export interface IAIDetails {
+  modelName: string;
+  prompt?: string;
+  response?: string;
+  temperature?: number;
+  tokensUsed?: number;
+  latencyMs?: number;
+  roundTableSessionId?: string;
+}
+
+export interface IRequestContext {
+  requestId?: string;
+  traceId?: string;
+  userAgent?: string;
+  ipAddress?: string;
+  endpoint?: string;
+  method?: string;
+}
+
+export interface IAuditLog extends MongoDocument {
+  eventType: AuditEventType;
+  severity: SeverityLevel;
+
+  agentType: AgentType;
+  agentId: string;
+
   caseId?: mongoose.Types.ObjectId;
-  actionId?: mongoose.Types.ObjectId;
   documentId?: mongoose.Types.ObjectId;
-  userId?: string;
-  sessionId?: string;
+  actionId?: mongoose.Types.ObjectId;
 
-  agent: {
-    type: AgentType;
-    version: string;
-    instanceId?: string;
-  };
+  message: string;
+  details?: Record<string, any>;
 
-  event: {
-    type: AuditEventType;
-    description: string;
-    severity: Severity;
-  };
+  aiDetails?: IAIDetails;
 
-  aiIO?: {
-    prompt?: string;
-    response?: string;
-    model: string;
-    temperature?: number;
-    tokensUsed?: {
-      input: number;
-      output: number;
-      total: number;
-    };
-    confidence?: number;
-  };
+  requestContext?: IRequestContext;
 
-  roundTable?: {
-    participants: AgentType[];
-    discussion: Array<{
-      agent: AgentType;
-      message: string;
-      timestamp: Date;
-    }>;
-    consensus?: string;
-  };
+  success: boolean;
+  errorMessage?: string;
+  errorStack?: string;
 
-  feedback?: {
-    decision: 'approved' | 'rejected';
-    rating?: number;
-    comments?: string;
-    whatWentWrong?: string;
-    whatWentWell?: string;
-  };
-
-  blockchain?: {
-    network: 'mainnet' | 'devnet' | 'testnet';
-    transactionHash?: string;
-    slot?: number;
-    confirmed: boolean;
-    dataHash: string;
-  };
-
-  timing: {
-    startedAt: Date;
-    completedAt?: Date;
-    durationMs?: number;
-  };
-
-  result: {
-    success: boolean;
-    error?: {
-      code: string;
-      message: string;
-      stack?: string;
-    };
-    data?: Record<string, any>;
-  };
+  blockchainHash?: string;
 
   createdAt: Date;
 }
 
+const AIDetailsSchema = new Schema<IAIDetails>(
+  {
+    modelName: { type: String, required: true },
+    prompt: { type: String },
+    response: { type: String },
+    temperature: { type: Number },
+    tokensUsed: { type: Number },
+    latencyMs: { type: Number },
+    roundTableSessionId: { type: String },
+  },
+  { _id: false }
+);
+
+const RequestContextSchema = new Schema<IRequestContext>(
+  {
+    requestId: { type: String },
+    traceId: { type: String },
+    userAgent: { type: String },
+    ipAddress: { type: String },
+    endpoint: { type: String },
+    method: { type: String },
+  },
+  { _id: false }
+);
+
 const AuditLogSchema = new Schema<IAuditLog>(
   {
-    traceId: {
+    eventType: {
       type: String,
-      required: [true, 'Trace ID is required'],
+      required: [true, 'Event type is required'],
+      enum: {
+        values: AUDIT_EVENT_TYPES,
+        message: '{VALUE} is not a valid event type',
+      },
       index: true,
     },
-    spanId: {
+    severity: {
       type: String,
-      required: [true, 'Span ID is required'],
-      unique: true,
-    },
-    parentSpanId: {
-      type: String,
+      required: true,
+      default: SeverityLevel.INFO,
+      enum: {
+        values: SEVERITY_LEVELS,
+        message: '{VALUE} is not a valid severity level',
+      },
       index: true,
     },
+
+    agentType: {
+      type: String,
+      required: [true, 'Agent type is required'],
+      enum: {
+        values: AGENT_TYPES,
+        message: '{VALUE} is not a valid agent type',
+      },
+      index: true,
+    },
+    agentId: {
+      type: String,
+      required: [true, 'Agent ID is required'],
+      index: true,
+    },
+
     caseId: {
       type: Schema.Types.ObjectId,
       ref: 'Case',
+      index: true,
+    },
+    documentId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Document',
       index: true,
     },
     actionId: {
@@ -116,172 +131,80 @@ const AuditLogSchema = new Schema<IAuditLog>(
       ref: 'Action',
       index: true,
     },
-    documentId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Document',
-    },
-    userId: {
+
+    message: {
       type: String,
-      index: true,
+      required: [true, 'Message is required'],
     },
-    sessionId: String,
-    agent: {
-      type: {
-        type: String,
-        required: [true, 'Agent type is required'],
-        enum: {
-          values: AGENT_TYPES,
-          message: '{VALUE} is not a valid agent type',
-        },
-        index: true,
-      },
-      version: {
-        type: String,
-        required: true,
-        default: '1.0.0',
-      },
-      instanceId: String,
+    details: {
+      type: Schema.Types.Mixed,
     },
-    event: {
-      type: {
-        type: String,
-        required: [true, 'Event type is required'],
-        enum: {
-          values: AUDIT_EVENT_TYPES,
-          message: '{VALUE} is not a valid event type',
-        },
-        index: true,
-      },
-      description: {
-        type: String,
-        required: [true, 'Event description is required'],
-      },
-      severity: {
-        type: String,
-        required: true,
-        default: Severity.INFO,
-        enum: {
-          values: SEVERITIES,
-          message: '{VALUE} is not a valid severity',
-        },
-        index: true,
-      },
+
+    aiDetails: {
+      type: AIDetailsSchema,
     },
-    aiIO: {
-      prompt: String,
-      response: String,
-      model: String,
-      temperature: {
-        type: Number,
-        min: 0,
-        max: 2,
-      },
-      tokensUsed: {
-        input: Number,
-        output: Number,
-        total: Number,
-      },
-      confidence: {
-        type: Number,
-        min: 0,
-        max: 1,
-      },
+
+    requestContext: {
+      type: RequestContextSchema,
     },
-    roundTable: {
-      participants: [
-        {
-          type: String,
-          enum: AGENT_TYPES,
-        },
-      ],
-      discussion: [
-        {
-          agent: {
-            type: String,
-            enum: AGENT_TYPES,
-            required: true,
-          },
-          message: {
-            type: String,
-            required: true,
-          },
-          timestamp: {
-            type: Date,
-            default: Date.now,
-          },
-        },
-      ],
-      consensus: String,
+
+    success: {
+      type: Boolean,
+      required: true,
+      default: true,
     },
-    feedback: {
-      decision: {
-        type: String,
-        enum: ['approved', 'rejected'],
-      },
-      rating: {
-        type: Number,
-        min: 1,
-        max: 5,
-      },
-      comments: String,
-      whatWentWrong: String,
-      whatWentWell: String,
-    },
-    blockchain: {
-      network: {
-        type: String,
-        enum: ['mainnet', 'devnet', 'testnet'],
-      },
-      transactionHash: String,
-      slot: Number,
-      confirmed: {
-        type: Boolean,
-        default: false,
-      },
-      dataHash: String,
-    },
-    timing: {
-      startedAt: {
-        type: Date,
-        required: true,
-        default: Date.now,
-      },
-      completedAt: Date,
-      durationMs: Number,
-    },
-    result: {
-      success: {
-        type: Boolean,
-        required: true,
-        default: true,
-      },
-      error: {
-        code: String,
-        message: String,
-        stack: String,
-      },
-      data: {
-        type: Schema.Types.Mixed,
-      },
-    },
+    errorMessage: { type: String },
+    errorStack: { type: String },
+
+    blockchainHash: { type: String, index: true },
   },
   {
-    timestamps: true,
+    timestamps: { createdAt: true, updatedAt: false },
     collection: 'audit_logs',
   }
 );
 
-AuditLogSchema.index({ traceId: 1, 'timing.startedAt': 1 });
+AuditLogSchema.index({ createdAt: -1 });
+AuditLogSchema.index({ caseId: 1, createdAt: -1 });
+AuditLogSchema.index({ agentType: 1, eventType: 1, createdAt: -1 });
+AuditLogSchema.index({ severity: 1, success: 1, createdAt: -1 });
+AuditLogSchema.index({ eventType: 1, createdAt: -1 });
 
-AuditLogSchema.index({ caseId: 1, 'agent.type': 1, createdAt: -1 });
+AuditLogSchema.statics.logEvent = async function (
+  eventType: AuditEventType,
+  agentType: AgentType,
+  agentId: string,
+  message: string,
+  options: Partial<IAuditLog> = {}
+) {
+  return this.create({
+    eventType,
+    agentType,
+    agentId,
+    message,
+    success: true,
+    ...options,
+  });
+};
 
-AuditLogSchema.index({ 'agent.type': 1, 'event.type': 1, createdAt: -1 });
+AuditLogSchema.statics.logError = async function (
+  eventType: AuditEventType,
+  agentType: AgentType,
+  agentId: string,
+  error: Error,
+  options: Partial<IAuditLog> = {}
+) {
+  return this.create({
+    eventType,
+    agentType,
+    agentId,
+    message: error.message,
+    success: false,
+    errorMessage: error.message,
+    errorStack: error.stack,
+    severity: SeverityLevel.ERROR,
+    ...options,
+  });
+};
 
-AuditLogSchema.index({ 'result.success': 1, 'event.severity': 1, createdAt: -1 });
-
-AuditLogSchema.index({ 'feedback.decision': 1, 'agent.type': 1, createdAt: -1 });
-
-// AuditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 63072000 });
-
-export default mongoose.models.AuditLog ||
-  mongoose.model<IAuditLog>('AuditLog', AuditLogSchema);
+export default mongoose.models.AuditLog || mongoose.model<IAuditLog>('AuditLog', AuditLogSchema);
