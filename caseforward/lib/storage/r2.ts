@@ -73,46 +73,19 @@ export async function uploadToR2(
   }
 }
 
-export async function getSignedUrl(
-  objectKey: string,
-  expiresInSeconds: number = 3600
-): Promise<string | null> {
-  const workerUrl = process.env.CF_WORKER_URL;
-  const apiKey = process.env.INTERNAL_API_KEY;
+export async function getSignedUrl(objectKey: string): Promise<string | null> {
+  const workerUrl = process.env.CF_WORKER_UPLOAD_URL;
 
-  if (!workerUrl || !apiKey) {
-    console.error('R2 configuration missing');
+  if (!workerUrl) {
+    console.error('CF_WORKER_UPLOAD_URL not configured');
     return null;
   }
 
-  try {
-    const response = await fetch(`${workerUrl}/signed-url`, {
-      method: 'POST',
-      headers: {
-        'X-Internal-Auth': apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        objectKey,
-        expiresIn: expiresInSeconds,
-      }),
-    });
-
-    if (!response.ok) {
-      console.error('Failed to get signed URL:', response.statusText);
-      return null;
-    }
-
-    const result = await response.json();
-    return result.signedUrl;
-  } catch (error) {
-    console.error('Error getting signed URL:', error);
-    return null;
-  }
+  return `${workerUrl}/file/${encodeURIComponent(objectKey)}`;
 }
 
 export async function deleteFromR2(objectKey: string): Promise<boolean> {
-  const workerUrl = process.env.CF_WORKER_URL;
+  const workerUrl = process.env.CF_WORKER_UPLOAD_URL;
   const apiKey = process.env.INTERNAL_API_KEY;
 
   if (!workerUrl || !apiKey) {

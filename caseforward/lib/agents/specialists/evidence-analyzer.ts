@@ -1,66 +1,62 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Specialist, AgentContext } from '../core/specialist';
+import { AgentRole, AgentMessage } from '../core/types';
+import { generateText } from 'ai';
+import { getGeminiModel } from '../core/gemini';
+import { formatCaseContextForPrompt } from '../services/case-context.service';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+export class EvidenceAnalyzer implements Specialist {
+  role: AgentRole = 'EVIDENCE_ANALYZER';
+  description = "The rigorous fact-checker. Analyzes documents, identifies gaps in evidence, flags contradictions, and ensures the case foundation is solid.";
 
-export interface EvidenceAnalyzerResponse {
-  opinion: string;
-  facts: string[];
-  contradictions: string[];
-  evidenceScore: number;
-  recommendations: string[];
-}
+  async opine(input: string, context: AgentContext): Promise<string> {
+    const caseSummary = formatCaseContextForPrompt(context.caseData);
 
-export async function analyzeAsEvidenceAnalyzer(caseData: {
-  title: string;
-  description: string;
-  metadata?: Record<string, any>;
-}): Promise<EvidenceAnalyzerResponse> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-  
-  const prompt = `You are the Evidence Analyzer, an AI specialist focused on facts and logical consistency. 
-Analyze this case objectively:
+    const prompt = `
+You are the Evidence Analyzer for a personal injury law firm. Your job is to be skeptical, thorough, and fact-focused.
+${caseSummary}
 
-Title: ${caseData.title}
-Description: ${caseData.description}
-${caseData.metadata ? `Metadata: ${JSON.stringify(caseData.metadata)}` : ''}
+User Input: "${input}"
 
-Provide:
-1. Your objective opinion based on facts
-2. Key facts identified (3-5 bullet points)
-3. Any contradictions or inconsistencies found
-4. An evidence score (0-100) indicating the strength of evidence
-5. Recommendations for gathering more evidence
+Your task:
+1. Identify any MISSING critical documents based on the case type.
+2. Flag any CONTRADICTIONS between client statements and police/medical records.
+3. Highlight KEY FACTS that support or weaken the liability/damages arguments.
+4. Ignore emotion; focus on what can be proven.
 
-Respond in JSON format with: opinion, facts (array), contradictions (array), evidenceScore (number), recommendations (array).`;
+Output your analysis of the evidentiary state of the case.
+`;
 
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    // Try to parse JSON from the response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-    
-    // Fallback if JSON parsing fails
-    return {
-      opinion: text,
-      facts: ['Case details provided', 'Documentation available'],
-      contradictions: [],
-      evidenceScore: 70,
-      recommendations: ['Verify documentation', 'Cross-reference facts'],
-    };
-  } catch (error) {
-    console.error('Evidence Analyzer error:', error);
-    return {
-      opinion: 'Unable to analyze evidence at this time. Please review the case documentation.',
-      facts: ['Case exists', 'Details provided'],
-      contradictions: [],
-      evidenceScore: 50,
-      recommendations: ['Review all documents', 'Verify information'],
-    };
+    const { text } = await generateText({
+      model: getGeminiModel('gemini-2.5-flash-lite'),
+      prompt: prompt,
+    });
+
+    return text;
+  }
+
+  async reply(messageHistory: AgentMessage[], context: AgentContext): Promise<string> {
+    const lastMessage = messageHistory[messageHistory.length - 1];
+    const caseSummary = formatCaseContextForPrompt(context.caseData);
+
+    const prompt = `
+You are the Evidence Analyzer.
+${caseSummary}
+
+The last message was from ${lastMessage.role}: "${lastMessage.content}"
+
+Review the discussion so far.
+- If the Client Guru proposes a statement, is it backed by evidence?
+- If the Settlement Valuator generates a number, are the underlying medical bills/records actually present?
+- Are we making assumptions? Call them out.
+
+Provide your objective analysis of the proposed plan.
+`;
+
+    const { text } = await generateText({
+      model: getGeminiModel('gemini-2.5-flash-lite'),
+      prompt: prompt,
+    });
+
+    return text;
   }
 }
-

@@ -1,126 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import connectDB from '@/lib/db/connect';
-import { Document, Case, AuditLog } from '@/lib/db/models';
-import {
-  DocumentStatus,
-  AuditEventType,
-  SeverityLevel,
-  AgentType,
-} from '@/lib/db/types/enums';
-
-interface AssignRequest {
-  caseId: string;
-  assignedBy?: string;
-}
-
-interface AssignResponse {
-  success: boolean;
-  message?: string;
-  documentId?: string;
-  caseId?: string;
-  status?: DocumentStatus;
-}
+import dbConnect from '@/lib/db/dbConnect';
+import Document from '@/lib/db/models/Document';
+import Case from '@/lib/db/models/Case';
+import { DocumentStatus } from '@/lib/db/types/enums';
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<AssignResponse>> {
+) {
   try {
     const { id: documentId } = await params;
 
-    if (!mongoose.Types.ObjectId.isValid(documentId)) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid document ID' },
-        { status: 400 }
-      );
+    // Handle both JSON and FormData
+    let caseId: string;
+    const contentType = req.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      const body = await req.json();
+      caseId = body.caseId;
+    } else {
+      const formData = await req.formData();
+      caseId = formData.get('caseId') as string;
     }
 
-    const body: AssignRequest = await req.json();
-    const { caseId, assignedBy = 'system' } = body;
+    if (!documentId || !mongoose.Types.ObjectId.isValid(documentId)) {
+      return NextResponse.json({ error: 'Invalid document ID' }, { status: 400 });
+    }
 
     if (!caseId || !mongoose.Types.ObjectId.isValid(caseId)) {
-      return NextResponse.json(
-        { success: false, message: 'Valid caseId is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid case ID' }, { status: 400 });
     }
 
-    await connectDB();
+    await dbConnect();
 
-    const doc = await Document.findById(documentId);
-    if (!doc) {
-      return NextResponse.json(
-        { success: false, message: 'Document not found' },
-        { status: 404 }
-      );
-    }
-
-    if (doc.caseId) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Document is already assigned to a case',
-          caseId: doc.caseId.toString(),
-        },
-        { status: 409 }
-      );
-    }
-
+    // Verify case exists
     const caseDoc = await Case.findById(caseId);
     if (!caseDoc) {
-      return NextResponse.json(
-        { success: false, message: 'Case not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Case not found' }, { status: 404 });
     }
 
-    await Document.findByIdAndUpdate(
+    // Update document
+    const updatedDoc = await Document.findByIdAndUpdate(
       documentId,
       {
         caseId: new mongoose.Types.ObjectId(caseId),
-        status: DocumentStatus.PROCESSING,
+        status: DocumentStatus.ASSIGNED,
         assignedAt: new Date(),
-        assignedBy,
       },
       { new: true }
     );
 
-    await Case.findByIdAndUpdate(caseId, {
-      $inc: { documentCount: 1 },
-    });
+    if (!updatedDoc) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+    }
 
-    await AuditLog.create({
-      eventType: AuditEventType.DOCUMENT_ASSIGNED,
-      severity: SeverityLevel.INFO,
-      agentType: AgentType.SYSTEM,
-      agentId: assignedBy,
-      documentId: new mongoose.Types.ObjectId(documentId),
-      caseId: new mongoose.Types.ObjectId(caseId),
-      message: `Document assigned to case ${caseDoc.caseNumber}`,
-      success: true,
-      details: {
-        documentTitle: doc.title,
-        caseNumber: caseDoc.caseNumber,
-        clientName: `${caseDoc.client.firstName} ${caseDoc.client.lastName}`,
-      },
-    });
+    // Increment case document count
+    await Case.findByIdAndUpdate(caseId, { $inc: { documentCount: 1 } });
 
-    // TODO: Trigger Round Table analysis
-    // await triggerRoundTable(documentId, caseId);
+    // Redirect back to documents page if form submission
+    if (!contentType.includes('application/json')) {
+      return NextResponse.redirect(new URL(`/app/case/${caseId}/documents`, req.url));
+    }
 
     return NextResponse.json({
       success: true,
-      documentId,
-      caseId,
-      status: DocumentStatus.PROCESSING,
-      message: 'Document assigned and queued for analysis',
+      document: updatedDoc,
     });
-
   } catch (error: any) {
-    console.error('Assignment error:', error);
+    console.error('Assign document error:', error);
     return NextResponse.json(
-      { success: false, message: error.message || 'Assignment failed' },
+      { error: error.message || 'Failed to assign document' },
       { status: 500 }
     );
   }

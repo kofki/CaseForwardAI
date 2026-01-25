@@ -143,7 +143,7 @@ const CaseSchema = new Schema<ICase>(
     fileNumber: {
       type: String,
       trim: true,
-      sparse: true,
+      // Don't set default - let it be undefined/missing entirely
     },
 
     caseType: {
@@ -235,6 +235,15 @@ CaseSchema.index({ 'client.lastName': 1, 'client.firstName': 1 });
 CaseSchema.index({ statuteOfLimitationsDate: 1, status: 1 });
 CaseSchema.index({ createdAt: -1 });
 CaseSchema.index({ updatedAt: -1 });
+// Ensure fileNumber is unique only when present and non-null
+CaseSchema.index(
+  { fileNumber: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { fileNumber: { $exists: true, $ne: null } },
+    name: 'fileNumber_unique_non_null',
+  }
+);
 
 CaseSchema.index(
   {

@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth0';
 import { getCaseById } from '@/lib/db/models/Case';
-import { conductRoundTable } from '@/lib/agents/round-table';
+import { RoundTable } from '@/lib/agents/round-table';
 
 export async function POST(request: NextRequest) {
     try {
         const session = await requireAuth();
-        const { caseId } = await request.json();
+        const { caseId, input } = await request.json();
 
-        if (!caseId) {
-            return NextResponse.json({ error: 'Case ID is required' }, { status: 400 });
+        if (!caseId || !input) {
+            return NextResponse.json({ error: 'caseId and input are required' }, { status: 400 });
         }
 
         // Fetch the case
@@ -19,17 +19,15 @@ export async function POST(request: NextRequest) {
         }
 
         // Conduct the round table analysis
-        const result = await conductRoundTable(
-            caseId,
-            {
-                title: case_.title,
-                description: case_.description,
-                metadata: case_.metadata,
-            },
-            session.user?.sub
-        );
+        const roundTable = new RoundTable();
+        const result = await roundTable.discussWithCase(caseId, input);
 
-        return NextResponse.json(result);
+        return NextResponse.json({
+            success: true,
+            history: result.history,
+            actionCard: result.card,
+            caseContext: result.caseContext
+        });
     } catch (error: any) {
         console.error('Agent orchestration error:', error);
         return NextResponse.json(
