@@ -169,9 +169,12 @@ export default async function Dashboard() {
       <main className="flex-1 p-8">
         {/* Header with Stats */}
         <div className="mb-8 flex items-center justify-between">
-          <button className="bg-[#f0a56b] text-[#4b1d1d] px-6 py-3 rounded font-semibold flex items-center gap-2 hover:bg-amber-400 text-lg">
+          <Link
+            href="/app/case/new"
+            className="bg-[#f0a56b] text-[#4b1d1d] px-6 py-3 rounded font-semibold flex items-center gap-2 hover:bg-amber-400 text-lg"
+          >
             <span>+</span> Register New Case
-          </button>
+          </Link>
           <div className="flex gap-6">
             <div className="bg-white rounded-lg shadow px-6 py-4">
               <p className="text-base text-gray-600">Active Cases</p>
