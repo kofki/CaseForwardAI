@@ -1,11 +1,14 @@
 import { auth0 } from "@/lib/auth0";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Poppins, Radley } from "next/font/google";
+import { Radley } from "next/font/google";
+import { CaseStatus } from "@/lib/db/types/enums";
 import dbConnect from "@/lib/db/dbConnect";
 import { getCases } from "@/lib/db/models/Case";
+import type { ICase } from "@/lib/db/models";
+import SidebarClient from "@/components/SidebarClient";
+import StatusBadge from "@/components/StatusBadge";
 
-const poppins = Poppins({ subsets: ["latin"], weight: "500" });
 const radley = Radley({ subsets: ["latin"], weight: "400" });
 
 export const runtime = "nodejs";
@@ -14,36 +17,43 @@ export const dynamic = "force-dynamic";
 export default async function Dashboard() {
   const session = await auth0.getSession();
 
-  const userName = session?.user?.name || "User";
-  const userInitials = userName
-    .split(" ")
-    .map((part) => part.trim()[0])
-    .filter(Boolean)
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
   if (!session) {
     redirect("/auth/login");
   }
 
   let activeCases = 0;
   let archivedCases = 0;
-  let caseList: any[] = [];
-  let actionItems: any[] = [];
-  let activityItems: any[] = [];
+  let caseList: {
+    status: CaseStatus;
+    id: string;
+    caseNum: string;
+    client: string;
+    caseName: string;
+    incidentDate: string;
+  }[] = [];
+  let actionItems: {
+    id: string;
+    caseNum: string;
+    status: CaseStatus;
+    action: string;
+  }[] = [];
+  let activityItems: { time: string; action: string }[] = [];
+  let cases: ICase[] = [];
 
   try {
     await dbConnect();
-    const cases = await getCases();
+    cases = (await getCases()) || [];
 
-    activeCases = cases?.filter((c: any) => c.status !== "closed").length || 0;
+    activeCases =
+      cases?.filter((c: ICase) => c.status !== CaseStatus.CLOSED).length || 0;
     archivedCases =
-      cases?.filter((c: any) => c.status === "closed").length || 0;
+      cases?.filter((c: ICase) => c.status === CaseStatus.CLOSED).length || 0;
 
     // Use real cases data
     caseList =
-      cases?.slice(0, 4).map((c: any) => ({
+      cases?.slice(0, 4).map((c: ICase) => ({
+        status: c.status || CaseStatus.INTAKE,
+        id: c._id?.toString?.() || c.caseNumber,
         caseNum: c.caseNumber,
         client:
           `${c.client?.firstName || ""} ${c.client?.lastName || "Unknown"}`.trim(),
@@ -54,19 +64,17 @@ export default async function Dashboard() {
       })) || [];
 
     actionItems =
-      cases?.slice(0, 3).map((c: any) => ({
+      cases?.slice(0, 3).map((c: ICase) => ({
+        id: c._id?.toString?.() || c.caseNumber,
         caseNum: c.caseNumber,
-        status:
-          c.aiMetadata?.riskFlags?.length > 0
-            ? "Action Required"
-            : "Needs Review",
+        status: c.status || CaseStatus.INTAKE,
         action:
           c.aiMetadata?.nextSteps?.[0] ||
           `Review case details for ${c.client?.firstName || "client"}`,
       })) || [];
 
     activityItems =
-      cases?.slice(0, 8).map((c: any) => ({
+      cases?.slice(0, 8).map((c: ICase) => ({
         time: c.aiMetadata?.lastProcessedAt
           ? new Date(c.aiMetadata.lastProcessedAt).toLocaleTimeString()
           : new Date(c.updatedAt).toLocaleTimeString(),
@@ -87,83 +95,7 @@ export default async function Dashboard() {
 
   return (
     <div className="flex min-h-screen bg-[#f0ece6]">
-      {/* Sidebar */}
-      <aside
-        className={`w-96 bg-[#4b1d1d] text-white p-8 flex flex-col ${poppins.className}`}
-      >
-        <div className="mb-8">
-          <h1 className={`text-5xl font-bold ${radley.className}`}>
-            CaseForward
-          </h1>
-        </div>
-
-        {/* User Profile */}
-        <div className="mt-6 pt-6 mb-6 pb-6 border-t border-b border-white/20">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-200/90 via-amber-100 to-white/80 text-[#4b1d1d] font-semibold flex items-center justify-center text-xl ring-2 ring-white/40 shadow-lg">
-              {userInitials}
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold text-lg">{userName}</p>
-              <p className="text-base text-white/80">{session.user?.email}</p>
-            </div>
-            <details className="relative inline-flex items-center group">
-              <summary className="list-none text-white/80 hover:text-white text-2xl leading-none px-2 cursor-pointer select-none">
-                ⋮
-              </summary>
-              <div className="absolute left-full ml-3 top-0 w-48 bg-white text-[#4b1d1d] rounded-lg shadow-xl ring-1 ring-black/5 opacity-0 translate-y-2 pointer-events-none transition duration-150 group-open:opacity-100 group-open:pointer-events-auto group-open:translate-y-0">
-                <a
-                  href="/api/auth/logout"
-                  className="block px-4 py-3 text-base font-semibold hover:bg-[#f7f1eb] rounded-lg"
-                >
-                  Log Out
-                </a>
-              </div>
-            </details>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="space-y-4 flex-1">
-          <a
-            href="/app"
-            className="flex items-center gap-4 px-4 py-4 rounded hover:bg-white/10 text-2xl"
-          >
-            <span className="text-4xl">📊</span>
-            <span>Dashboard</span>
-          </a>
-          <a
-            href="#"
-            className="flex items-center gap-4 px-4 py-4 rounded hover:bg-white/10 text-2xl"
-          >
-            <span className="text-4xl">📁</span>
-            <span>Cases</span>
-          </a>
-          <a
-            href="#"
-            className="flex items-center gap-4 px-4 py-4 rounded hover:bg-white/10 text-2xl"
-          >
-            <span className="text-4xl">⚖️</span>
-            <span>Priority Action Items</span>
-          </a>
-          <a
-            href="#"
-            className="flex items-center gap-4 px-4 py-4 rounded hover:bg-white/10 text-2xl"
-          >
-            <span className="text-4xl">🤖</span>
-            <span>AI Assistant Chatbot</span>
-          </a>
-        </nav>
-
-        {/* Logout */}
-        <a
-          href="/api/auth/logout"
-          className="flex items-center gap-4 px-4 py-4 rounded hover:bg-white/10 text-white/80 hover:text-white text-xl"
-        >
-          <span className="text-3xl">🚪</span>
-          <span>Log Out</span>
-        </a>
-      </aside>
+      <SidebarClient activePage="dashboard" />
 
       {/* Main Content */}
       <main className="flex-1 p-8">
@@ -192,10 +124,15 @@ export default async function Dashboard() {
         {/* Action Items Section */}
         <div className="mb-8">
           <div className="bg-[#4b1d1d] text-white p-4 rounded-t-lg flex justify-between items-center">
-            <h2 className="text-3xl font-bold">Action Items</h2>
-            <button className="text-base text-amber-200 hover:text-amber-100">
+            <h2 className={`text-3xl font-bold ${radley.className}`}>
+              Action Items
+            </h2>
+            <Link
+              href="/app/cases"
+              className="text-base text-amber-200 hover:text-amber-100"
+            >
               View More
-            </button>
+            </Link>
           </div>
           <div className="bg-white rounded-b-lg shadow overflow-hidden">
             <table className="w-full">
@@ -219,21 +156,23 @@ export default async function Dashboard() {
                     className="border-b border-gray-100 hover:bg-gray-50"
                   >
                     <td className="px-6 py-4 text-base font-semibold text-gray-900">
-                      {item.caseNum}
+                      <Link
+                        href={`/app/case/${item.id}`}
+                        className="text-[#4b1d1d] hover:underline"
+                      >
+                        {item.caseNum}
+                      </Link>
                     </td>
                     <td className="px-6 py-4 text-base">
-                      <span
-                        className={`px-3 py-1 rounded text-white text-sm font-semibold ${
-                          item.status === "Needs Review"
-                            ? "bg-red-500"
-                            : "bg-orange-500"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
+                      <StatusBadge status={item.status} />
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
-                      {item.action}
+                      <Link
+                        href={`/app/case/${item.id}`}
+                        className="text-[#4b1d1d] hover:underline"
+                      >
+                        {item.action}
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -245,10 +184,15 @@ export default async function Dashboard() {
         {/* Case List Section */}
         <div className="mb-8">
           <div className="bg-[#4b1d1d] text-white p-4 rounded-t-lg flex justify-between items-center">
-            <h2 className="text-3xl font-bold">Case List</h2>
-            <button className="text-base text-amber-200 hover:text-amber-100">
+            <h2 className={`text-3xl font-bold ${radley.className}`}>
+              Case List
+            </h2>
+            <Link
+              href="/app/cases"
+              className="text-base text-amber-200 hover:text-amber-100"
+            >
               View More
-            </button>
+            </Link>
           </div>
           <div className="bg-white rounded-b-lg shadow overflow-hidden">
             <table className="w-full">
@@ -275,16 +219,36 @@ export default async function Dashboard() {
                     className="border-b border-gray-100 hover:bg-gray-50"
                   >
                     <td className="px-6 py-4 text-base font-semibold text-gray-900">
-                      {item.caseNum}
+                      <Link
+                        href={`/app/case/${item.id}`}
+                        className="block w-full h-full text-[#4b1d1d] hover:underline"
+                      >
+                        {item.caseNum}
+                      </Link>
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
-                      {item.client}
+                      <Link
+                        href={`/app/case/${item.id}`}
+                        className="block w-full h-full text-[#4b1d1d] hover:underline"
+                      >
+                        {item.client}
+                      </Link>
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
-                      {item.caseName}
+                      <Link
+                        href={`/app/case/${item.id}`}
+                        className="block w-full h-full text-[#4b1d1d] hover:underline"
+                      >
+                        {item.caseName}
+                      </Link>
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
-                      {item.incidentDate}
+                      <Link
+                        href={`/app/case/${item.id}`}
+                        className="block w-full h-full text-[#4b1d1d] hover:underline"
+                      >
+                        {item.incidentDate}
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -296,7 +260,9 @@ export default async function Dashboard() {
         {/* Activity Feed Section */}
         <div>
           <div className="bg-[#4b1d1d] text-white p-4 rounded-t-lg flex justify-between items-center">
-            <h2 className="text-3xl font-bold">Activity Feed</h2>
+            <h2 className={`text-3xl font-bold ${radley.className}`}>
+              Activity Feed
+            </h2>
             <button className="text-base text-amber-200 hover:text-amber-100">
               View All Activity
             </button>
