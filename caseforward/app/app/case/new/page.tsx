@@ -2,6 +2,7 @@ import { auth0 } from "@/lib/auth0";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Poppins, Radley } from "next/font/google";
+import { FolderOpen, Upload, Link as LinkIcon } from "lucide-react";
 
 const poppins = Poppins({ subsets: ["latin"], weight: "500" });
 const radley = Radley({ subsets: ["latin"], weight: "400" });
@@ -48,7 +49,7 @@ export default async function NewCasePage() {
                 <p className="text-sm text-amber-200">Case Details</p>
                 <h2 className="text-2xl font-bold">Primary Information</h2>
               </div>
-              <span className="text-3xl">📂</span>
+              <FolderOpen size={28} className="text-white" />
             </div>
 
             <div className="p-6 space-y-4">
@@ -156,7 +157,7 @@ export default async function NewCasePage() {
                   <p className="text-sm text-amber-200">Evidence</p>
                   <h3 className="text-xl font-bold">Upload Case File</h3>
                 </div>
-                <span className="text-2xl">⬆</span>
+                <Upload size={24} className="text-white" />
               </div>
               <div className="p-5 space-y-3">
                 <p className="text-sm text-gray-700">
@@ -180,7 +181,7 @@ export default async function NewCasePage() {
                   <p className="text-sm text-amber-200">Channels</p>
                   <h3 className="text-xl font-bold">Pull From Channel</h3>
                 </div>
-                <span className="text-2xl">🔗</span>
+                <LinkIcon size={24} className="text-white" />
               </div>
               <div className="p-5 space-y-3">
                 <label className="space-y-2">

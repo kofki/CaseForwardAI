@@ -1,12 +1,14 @@
 import { auth0 } from "@/lib/auth0";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Poppins, Radley } from "next/font/google";
+import { Radley } from "next/font/google";
 import dbConnect from "@/lib/db/dbConnect";
 import { getCases } from "@/lib/db/models/Case";
-import { CaseStatus, CaseStatusLabels } from "@/lib/db/types/enums";
+import type { ICase } from "@/lib/db/models";
+import { CaseStatus } from "@/lib/db/types/enums";
+import SidebarClient from "@/components/SidebarClient";
+import StatusBadge from "@/components/StatusBadge";
 
-const poppins = Poppins({ subsets: ["latin"], weight: "500" });
 const radley = Radley({ subsets: ["latin"], weight: "400" });
 
 export const runtime = "nodejs";
@@ -21,8 +23,8 @@ export default async function CasesPage() {
   await dbConnect();
   const cases = (await getCases()) || [];
 
-  const rows = cases.map((c: any) => ({
-    id: c._id?.toString?.() || c.id || c.caseNumber,
+  const rows = cases.map((c: ICase) => ({
+    id: c._id?.toString?.() || c.caseNumber,
     caseNum: c.caseNumber || "—",
     client:
       `${c.client?.firstName || ""} ${c.client?.lastName || "Unknown"}`.trim(),
@@ -33,54 +35,35 @@ export default async function CasesPage() {
     status: c.status || CaseStatus.INTAKE,
   }));
 
-  const statusColor: Record<string, string> = {
-    [CaseStatus.INTAKE]: "bg-amber-600",
-    [CaseStatus.INVESTIGATION]: "bg-blue-700",
-    [CaseStatus.TREATMENT]: "bg-amber-700",
-    [CaseStatus.DEMAND_PREP]: "bg-indigo-700",
-    [CaseStatus.NEGOTIATION]: "bg-purple-700",
-    [CaseStatus.LITIGATION]: "bg-rose-700",
-    [CaseStatus.TRIAL]: "bg-red-700",
-    [CaseStatus.SETTLED]: "bg-teal-700",
-    [CaseStatus.CLOSED]: "bg-gray-600",
-  };
-
   return (
-    <div className={`min-h-screen bg-[#f0ece6] ${poppins.className}`}>
-      <div className="max-w-6xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-6">
+    <div className="flex min-h-screen bg-[#f0ece6]">
+      <SidebarClient activePage="cases" />
+
+      <main className="flex-1 p-8">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <p className="text-sm text-[#4b1d1d]/80 uppercase tracking-[0.08em]">
-              Cases
-            </p>
             <h1
               className={`text-4xl font-bold text-[#4b1d1d] ${radley.className}`}
             >
               All Cases
             </h1>
-            <p className="text-sm text-[#4b1d1d]/70 mt-2">
+            <p className="text-base text-[#4b1d1d]/70 mt-2">
               Browse every case and jump into details.
             </p>
           </div>
-          <div className="flex gap-3">
-            <Link
-              href="/app"
-              className="px-4 py-2 border border-[#d7cfc3] text-[#4b1d1d] font-semibold hover:bg-[#f7f1eb]"
-            >
-              ← Dashboard
-            </Link>
-            <Link
-              href="/app/case/new"
-              className="px-4 py-2 bg-[#f0a56b] text-[#4b1d1d] font-semibold hover:bg-amber-400 shadow"
-            >
-              + New Case
-            </Link>
-          </div>
+          <Link
+            href="/app/case/new"
+            className="bg-[#f0a56b] text-[#4b1d1d] px-6 py-3 rounded font-semibold hover:bg-amber-400 text-lg"
+          >
+            + New Case
+          </Link>
         </div>
 
-        <div className="bg-white shadow border border-[#e6ded3] overflow-hidden rounded-none">
-          <div className="bg-[#4b1d1d] text-white px-6 py-4 flex items-center justify-between border-b border-white/15">
-            <h2 className="text-2xl font-bold">Case List</h2>
+        <div className="bg-white shadow border border-[#e6ded3] overflow-hidden">
+          <div className="bg-[#4b1d1d] text-white px-6 py-4 flex items-center justify-between">
+            <h2 className={`text-2xl font-bold ${radley.className}`}>
+              Case List
+            </h2>
             <span className="text-sm text-amber-200">{rows.length} total</span>
           </div>
           <div className="overflow-x-auto">
@@ -143,14 +126,7 @@ export default async function CasesPage() {
                       </Link>
                     </td>
                     <td className="px-6 py-4 text-base">
-                      <span
-                        className={`px-3 py-1 text-sm font-semibold text-white rounded-full ${
-                          statusColor[item.status] || "bg-amber-600"
-                        }`}
-                      >
-                        {CaseStatusLabels[item.status as CaseStatus] ||
-                          item.status}
-                      </span>
+                      <StatusBadge status={item.status} />
                     </td>
                   </tr>
                 ))}
@@ -168,7 +144,7 @@ export default async function CasesPage() {
             </table>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
