@@ -28,14 +28,62 @@ export default function Sidebar({
     <aside
       className={`w-96 bg-[#4b1d1d] text-white p-8 flex flex-col ${poppins.className}`}
     >
-      <div className="mb-8">
+      <div className="mb-12">
         <h1 className={`text-5xl font-bold ${radley.className}`}>
           CaseForward
         </h1>
       </div>
 
+      {/* Navigation */}
+      <nav className={`space-y-2 flex-1 pt-8 ${radley.className}`}>
+        <Link
+          href="/app"
+          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl border-t border-white/10 ${
+            activePage === "dashboard"
+              ? "border-b-2 border-b-[#f0a56b] bg-white/20"
+              : "border-b border-b-white/10 hover:bg-white/10"
+          }`}
+        >
+          <LayoutDashboard size={26} className="flex-shrink-0" />
+          <span>Dashboard</span>
+        </Link>
+        <Link
+          href="/app/cases"
+          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl border-b-2 ${
+            activePage === "cases"
+              ? "border-[#f0a56b] bg-white/20"
+              : "border-white/10 hover:bg-white/10"
+          }`}
+        >
+          <FileText size={26} className="flex-shrink-0" />
+          <span>Cases</span>
+        </Link>
+        <Link
+          href="/app/swipe"
+          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl border-b-2 ${
+            activePage === "actions"
+              ? "border-[#f0a56b] bg-white/20"
+              : "border-white/10 hover:bg-white/10"
+          }`}
+        >
+          <CheckSquare size={26} className="flex-shrink-0" />
+          <span>Priority Action Items</span>
+        </Link>
+        <Link
+          href="/app/chatbot"
+          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl border-b-2 ${
+            activePage === "chatbot"
+              ? "border-[#f0a56b] bg-white/20"
+              : "border-white/10 hover:bg-white/10"
+          }`}
+        >
+          <MessageSquare size={26} className="flex-shrink-0" />
+          <span>AI Assistant Chatbot</span>
+        </Link>
+      </nav>
+
       {/* User Profile */}
-      <div className="mt-6 pt-6 mb-6 pb-6 border-t border-b border-white/20">
+      <div className="mt-6 pt-6 border-t border-white/20">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-200/90 via-amber-100 to-white/80 text-[#4b1d1d] font-semibold flex items-center justify-center text-xl ring-2 ring-white/40 shadow-lg">
             {userInitials}
@@ -59,46 +107,6 @@ export default function Sidebar({
           </details>
         </div>
       </div>
-
-      {/* Navigation */}
-      <nav className="space-y-4 flex-1">
-        <Link
-          href="/app"
-          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl ${
-            activePage === "dashboard" ? "bg-white/20" : "hover:bg-white/10"
-          }`}
-        >
-          <LayoutDashboard size={28} className="flex-shrink-0" />
-          <span>Dashboard</span>
-        </Link>
-        <Link
-          href="/app/cases"
-          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl ${
-            activePage === "cases" ? "bg-white/20" : "hover:bg-white/10"
-          }`}
-        >
-          <FileText size={28} className="flex-shrink-0" />
-          <span>Cases</span>
-        </Link>
-        <a
-          href="#"
-          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl ${
-            activePage === "actions" ? "bg-white/20" : "hover:bg-white/10"
-          }`}
-        >
-          <CheckSquare size={28} className="flex-shrink-0" />
-          <span>Priority Action Items</span>
-        </a>
-        <Link
-          href="/app/chatbot"
-          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl ${
-            activePage === "chatbot" ? "bg-white/20" : "hover:bg-white/10"
-          }`}
-        >
-          <MessageSquare size={28} className="flex-shrink-0" />
-          <span>AI Assistant Chatbot</span>
-        </Link>
-      </nav>
     </aside>
   );
 }

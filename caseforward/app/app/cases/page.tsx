@@ -51,12 +51,20 @@ export default async function CasesPage() {
               Browse every case and jump into details.
             </p>
           </div>
-          <Link
-            href="/app/case/new"
-            className="bg-[#f0a56b] text-[#4b1d1d] px-6 py-3 rounded font-semibold hover:bg-amber-400 text-lg"
-          >
-            + New Case
-          </Link>
+          <div className="flex gap-3">
+            <Link
+              href="/app/swipe"
+              className="bg-[#4b1d1d] text-white px-6 py-3 rounded font-semibold hover:bg-[#6b2d2d] text-lg transition-colors"
+            >
+              Swipe View
+            </Link>
+            <Link
+              href="/app/case/new"
+              className="bg-[#f0a56b] text-[#4b1d1d] px-6 py-3 rounded font-semibold hover:bg-amber-400 text-lg"
+            >
+              + New Case
+            </Link>
+          </div>
         </div>
 
         <div className="bg-white shadow border border-[#e6ded3] overflow-hidden">
