@@ -56,7 +56,7 @@ export default async function Home() {
               <span className="leading-none">Login</span>
             </a>
             <a
-              href="/auth/signup"
+              href="/auth/login?screen_hint=signup"
               className={`flex items-center rounded-md bg-amber-300 px-5 py-3 text-sm font-semibold text-[#2b1a12] shadow-[0_12px_26px_rgba(0,0,0,0.18)] transition hover:bg-amber-200 ${poppins.className} tracking-[0.12em]`}
             >
               <span className="leading-none">Sign Up</span>
