@@ -186,4 +186,10 @@ FeedbackSchema.statics.getRejectionStats = async function (
   ]);
 };
 
-export default mongoose.models.Feedback || mongoose.model<IFeedback>('Feedback', FeedbackSchema);
+const FeedbackModel = mongoose.models.Feedback || mongoose.model<IFeedback>('Feedback', FeedbackSchema);
+
+export async function createFeedback(payload: Record<string, any> & { caseId: string; userId: string }) {
+  return FeedbackModel.create(payload as any);
+}
+
+export default FeedbackModel;

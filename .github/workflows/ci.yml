@@ -37,6 +37,10 @@ jobs:
           AUTH0_SECRET: ${{ secrets.AUTH0_SECRET }}
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          CF_WORKER_UPLOAD_URL: ${{ secrets.CF_WORKER_UPLOAD_URL }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+
+          
 
       - name: Build
         run: npm run build
@@ -48,3 +52,5 @@ jobs:
           AUTH0_SECRET: ${{ secrets.AUTH0_SECRET }}
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          CF_WORKER_UPLOAD_URL: ${{ secrets.CF_WORKER_UPLOAD_URL }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}

@@ -91,6 +91,20 @@ export interface IAction extends MongoDocument {
 
   aiContext: IAIContext;
 
+  actionCard?: {
+    recommendation?: string;
+    reasoning?: string;
+    confidence?: number;
+    [key: string]: any;
+  };
+
+  consensus?: {
+    clientGuruOpinion?: string;
+    evidenceAnalyzerOpinion?: string;
+    finalDecision?: string;
+    [key: string]: any;
+  };
+
   review?: IReviewResult;
   execution?: IExecutionResult;
 
@@ -276,4 +290,16 @@ ActionSchema.index({ status: 1, priority: 1, createdAt: 1 });
 ActionSchema.index({ caseId: 1, createdAt: -1 });
 ActionSchema.index({ status: 1, expiresAt: 1 });
 
-export default mongoose.models.Action || mongoose.model<IAction>('Action', ActionSchema);
+const ActionModel = mongoose.models.Action || mongoose.model<IAction>('Action', ActionSchema);
+
+export async function createAction(payload: Record<string, any> & { caseId: string | mongoose.Types.ObjectId }) {
+  return ActionModel.create(payload as any);
+}
+
+export async function getActionsByCaseId(caseId: string | mongoose.Types.ObjectId) {
+  return ActionModel.find({ caseId }).sort({ createdAt: -1 }).exec();
+}
+
+export default ActionModel;
+
+export type Action = IAction;

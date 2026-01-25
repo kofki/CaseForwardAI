@@ -45,6 +45,8 @@ export interface IAIMetadata {
 export interface ICase extends MongoDocument {
   caseNumber: string;
   fileNumber?: string;
+  title?: string;
+  description?: string;
 
   caseType: CaseType;
   status: CaseStatus;
@@ -136,6 +138,8 @@ const CaseSchema = new Schema<ICase>(
       trim: true,
       index: true,
     },
+    title: { type: String, trim: true },
+    description: { type: String },
     fileNumber: {
       type: String,
       trim: true,
@@ -254,4 +258,16 @@ CaseSchema.index(
   }
 );
 
-export default mongoose.models.Case || mongoose.model<ICase>('Case', CaseSchema);
+const CaseModel = mongoose.models.Case || mongoose.model<ICase>('Case', CaseSchema);
+
+export async function getCaseById(id: string | mongoose.Types.ObjectId) {
+  return CaseModel.findById(id).exec();
+}
+
+export async function getCases(filter?: any) {
+  return CaseModel.find(filter ?? {}).sort({ createdAt: -1 }).exec();
+}
+
+export default CaseModel;
+
+export type Case = ICase;
