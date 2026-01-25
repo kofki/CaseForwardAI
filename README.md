@@ -178,7 +178,7 @@ The AI layer implements a novel "Round Table" multi-agent deliberation system po
 
 ---
 
-### Security Archetecture can be found [Here](https://github.com/kofki/CaseForwardAI/new/main](https://github.com/kofki/CaseForwardAI/blob/main/Security.md))
+### Security Archetecture can be found [Here](https://github.com/kofki/CaseForwardAI/blob/main/Security.md)
 
 ---
 
