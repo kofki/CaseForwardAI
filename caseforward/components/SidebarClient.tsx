@@ -21,6 +21,10 @@ export default function SidebarClient({ activePage }: SidebarClientProps) {
     }
   }, []);
 
+  const handleSignOut = () => {
+    window.location.href = '/auth/logout';
+  };
+
   return (
     <Sidebar
       activePage={activePage}
