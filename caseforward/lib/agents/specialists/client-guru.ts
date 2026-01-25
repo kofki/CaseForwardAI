@@ -1,62 +1,62 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Specialist, AgentContext } from '../core/specialist';
+import { AgentRole, AgentMessage } from '../core/types';
+import { generateText } from 'ai';
+import { getGeminiModel } from '../core/gemini';
+import { formatCaseContextForPrompt } from '../services/case-context.service';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+export class ClientGuru implements Specialist {
+  role: AgentRole = 'CLIENT_GURU';
+  description = "The empathy engine. Drafts clear, professional, and compassionate communications to clients, explaining complex legal situations in plain English.";
 
-export interface ClientGuruResponse {
-  opinion: string;
-  empathyPoints: string[];
-  clarityScore: number;
-  recommendations: string[];
-}
+  async opine(input: string, context: AgentContext): Promise<string> {
+    const caseSummary = formatCaseContextForPrompt(context.caseData);
 
-export async function analyzeAsClientGuru(caseData: {
-  title: string;
-  description: string;
-  metadata?: Record<string, any>;
-}): Promise<ClientGuruResponse> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-  
-  const prompt = `You are the Client Guru, an AI specialist focused on empathy and clarity. 
-Analyze this case from the client's perspective:
+    const prompt = `
+You are the Client Guru for a personal injury law firm. Your goal is to manage client expectations and provide clear, empathetic updates.
+${caseSummary}
 
-Title: ${caseData.title}
-Description: ${caseData.description}
-${caseData.metadata ? `Metadata: ${JSON.stringify(caseData.metadata)}` : ''}
+User Input: "${input}"
 
-Provide:
-1. Your empathetic opinion on how the client might feel
-2. Key empathy points (3-5 bullet points)
-3. A clarity score (0-100) indicating how clear the case is
-4. Recommendations for improving client communication
+Your task:
+1. Analyze the situation from the CLIENT'S perspective.
+2. Draft a potential response or proactive update (email or text).
+3. Identify if we need more info from the client.
+4. Maintain a professional but warm tone.
 
-Respond in JSON format with: opinion, empathyPoints (array), clarityScore (number), recommendations (array).`;
+Output your thoughts on what we should communicate to the client and why.
+`;
 
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    // Try to parse JSON from the response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-    
-    // Fallback if JSON parsing fails
-    return {
-      opinion: text,
-      empathyPoints: ['Client needs clear communication', 'Empathy is crucial'],
-      clarityScore: 75,
-      recommendations: ['Improve documentation', 'Provide regular updates'],
-    };
-  } catch (error) {
-    console.error('Client Guru error:', error);
-    return {
-      opinion: 'Unable to analyze at this time. Please ensure clear communication with the client.',
-      empathyPoints: ['Client needs support', 'Clear communication required'],
-      clarityScore: 50,
-      recommendations: ['Review case details', 'Contact client for clarification'],
-    };
+    const { text } = await generateText({
+      model: getGeminiModel('gemini-2.5-flash-lite'),
+      prompt: prompt,
+    });
+
+    return text;
+  }
+
+  async reply(messageHistory: AgentMessage[], context: AgentContext): Promise<string> {
+    const lastMessage = messageHistory[messageHistory.length - 1];
+    const caseSummary = formatCaseContextForPrompt(context.caseData);
+
+    const prompt = `
+You are the Client Guru.
+${caseSummary}
+
+The last message was from ${lastMessage.role}: "${lastMessage.content}"
+
+Review the discussion so far.
+- If the Evidence Analyzer found missing docs, how do we ask the client for them without overwhelming them?
+- If the Settlement Valuator gave a low number, how do we prepare the client?
+- If the plan is aggressive, how do we reassure the client?
+
+Provide your input on how to frame the next communication with the client.
+`;
+
+    const { text } = await generateText({
+      model: getGeminiModel('gemini-2.5-flash-lite'),
+      prompt: prompt,
+    });
+
+    return text;
   }
 }
-
