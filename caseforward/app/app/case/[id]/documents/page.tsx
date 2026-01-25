@@ -5,7 +5,6 @@ import Document from '@/lib/db/models/Document';
 import dbConnect from '@/lib/db/dbConnect';
 import Link from 'next/link';
 import mongoose from 'mongoose';
-import { DocumentCategory, DocumentCategoryLabels, DocumentCategoryGroups } from '@/lib/db/types/enums';
 import DocumentGalleryClient from './DocumentGalleryClient';
 
 export const runtime = 'nodejs';
@@ -63,7 +62,7 @@ export default async function CaseDocumentsPage({ params }: { params: Promise<{ 
     },
     uploadedAt: doc.uploadedAt?.toISOString(),
     extractedContent: {
-      text: doc.extractedContent?.text?.substring(0, 500) || '',
+      text: doc.extractedContent?.text || '',
       pageCount: doc.extractedContent?.pageCount || 0,
     },
     aiAnalysis: {
@@ -76,6 +75,7 @@ export default async function CaseDocumentsPage({ params }: { params: Promise<{ 
     <DocumentGalleryClient 
       caseId={id}
       caseNumber={caseData.caseNumber}
+      caseType={caseData.caseType}
       clientName={`${caseData.client?.firstName || ''} ${caseData.client?.lastName || ''}`}
       documents={serializedDocs}
     />

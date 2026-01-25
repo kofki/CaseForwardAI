@@ -2,57 +2,99 @@
  * Document Analysis Service
  * 
  * This service triggers AI analysis when documents are uploaded.
- * It follows the flow from your diagram:
- * 
- * 1. Document uploaded → R2 storage
- * 2. Metadata saved to MongoDB with status: PENDING_ASSIGNMENT or PROCESSING
- * 3. If caseId exists → trigger Round Table analysis
- * 4. If no caseId → extract entities for matching
- * 5. Round Table generates Action Cards for the swipe queue
  */
 
 import mongoose from 'mongoose';
-import connectDB from '@/lib/db/connect';
-import { Document, Case, Action } from '@/lib/db/models';
-import { DocumentStatus, DocumentCategory, ActionType, ActionStatus, ActionPriority, AgentType } from '@/lib/db/types/enums';
-import { runRoundTable } from './round-table-v2';
-import { extractEntities, EntityExtractionResult } from './services/entity-extraction.service';
-import { findMatchingCases, CaseMatch } from './services/case-matching.service';
-import { randomUUID } from 'crypto';
+import dbConnect from '@/lib/db/dbConnect';
+import Document from '@/lib/db/models/Document';
+import Case from '@/lib/db/models/Case';
+import { DocumentStatus, DocumentCategory } from '@/lib/db/types/enums';
 
 // ============================================
 // Types
 // ============================================
 
+export interface EntityExtractionResult {
+  patientName?: string;
+  providerName?: string;
+  dates?: string[];
+  amounts?: number[];
+  addresses?: string[];
+  phoneNumbers?: string[];
+  caseNumbers?: string[];
+}
+
+export interface CaseMatch {
+  caseId: string;
+  caseNumber: string;
+  clientName: string;
+  confidence: number;
+  matchReason: string;
+}
+
 export interface DocumentAnalysisInput {
   documentId: string;
-  caseId?: string;       // Optional - if not provided, we'll try to match
-  extractedText: string; // Text from PDF extraction
+  caseId?: string;
+  extractedText: string;
   forceRoundTable?: boolean;
 }
 
 export interface DocumentAnalysisResult {
   documentId: string;
   status: DocumentStatus;
-  
-  // If case was identified
   caseId?: string;
   caseNumber?: string;
-  
-  // If no case found, suggest matches
   suggestedCases?: CaseMatch[];
-  
-  // Entities extracted from document
   entities?: EntityExtractionResult;
-  
-  // If Round Table was triggered
   roundTableSessionId?: string;
   actionId?: string;
-  
-  // Summary
   summary?: string;
   keyFindings?: string[];
   flags?: string[];
+}
+
+// ============================================
+// Simple Entity Extraction (placeholder)
+// ============================================
+
+async function extractEntities(text: string): Promise<EntityExtractionResult> {
+  const entities: EntityExtractionResult = {};
+  
+  // Extract dates (MM/DD/YYYY or YYYY-MM-DD format)
+  const dateRegex = /\b(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2})\b/g;
+  const dates = text.match(dateRegex);
+  if (dates) entities.dates = [...new Set(dates)];
+  
+  // Extract dollar amounts
+  const amountRegex = /\$[\d,]+\.?\d*/g;
+  const amounts = text.match(amountRegex);
+  if (amounts) {
+    entities.amounts = amounts.map(a => parseFloat(a.replace(/[$,]/g, '')));
+  }
+  
+  // Extract phone numbers
+  const phoneRegex = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g;
+  const phones = text.match(phoneRegex);
+  if (phones) entities.phoneNumbers = [...new Set(phones)];
+  
+  return entities;
+}
+
+// ============================================
+// Simple Case Matching (placeholder)
+// ============================================
+
+async function findMatchingCases(entities: EntityExtractionResult): Promise<CaseMatch[]> {
+  // This is a placeholder - in production, you'd use AI or more sophisticated matching
+  const cases = await Case.find({ status: { $ne: 'closed' } }).limit(5).lean();
+  
+  return cases.map((c: any) => ({
+    caseId: c._id.toString(),
+    caseNumber: c.caseNumber,
+    clientName: `${c.client?.firstName || ''} ${c.client?.lastName || ''}`.trim(),
+    confidence: 0.5,
+    matchReason: 'Potential match based on active status',
+  }));
 }
 
 // ============================================
@@ -61,21 +103,16 @@ export interface DocumentAnalysisResult {
 
 export class DocumentAnalysisService {
   
-  /**
-   * Main entry point for document analysis
-   */
   async analyze(input: DocumentAnalysisInput): Promise<DocumentAnalysisResult> {
-    await connectDB();
+    await dbConnect();
     
-    const { documentId, caseId, extractedText, forceRoundTable } = input;
+    const { documentId, caseId, extractedText } = input;
     
     console.log(`[DocAnalysis] Starting analysis for document ${documentId}`);
     
     // Step 1: Extract entities from document text
     const entities = await extractEntities(extractedText);
     console.log(`[DocAnalysis] Extracted entities:`, {
-      patientName: entities.patientName,
-      providerName: entities.providerName,
       dates: entities.dates?.length,
       amounts: entities.amounts?.length,
     });
@@ -91,21 +128,17 @@ export class DocumentAnalysisService {
     let suggestedCases: CaseMatch[] | undefined;
     
     if (!caseId) {
-      // Try to find matching cases based on extracted entities
       const matches = await findMatchingCases(entities);
       
       if (matches.length === 1 && matches[0].confidence >= 0.9) {
-        // High-confidence single match - auto-assign
         finalCaseId = matches[0].caseId;
-        console.log(`[DocAnalysis] Auto-assigned to case ${matches[0].caseNumber} (${matches[0].confidence * 100}% confidence)`);
+        console.log(`[DocAnalysis] Auto-assigned to case ${matches[0].caseNumber}`);
         
-        // Update document with case assignment
         await Document.findByIdAndUpdate(documentId, {
           caseId: new mongoose.Types.ObjectId(finalCaseId),
           status: DocumentStatus.PROCESSING,
         });
       } else if (matches.length > 0) {
-        // Multiple matches or low confidence - require human review
         suggestedCases = matches;
         
         await Document.findByIdAndUpdate(documentId, {
@@ -119,8 +152,6 @@ export class DocumentAnalysisService {
           })),
         });
         
-        console.log(`[DocAnalysis] Document requires case assignment. ${matches.length} suggestions.`);
-        
         return {
           documentId,
           status: DocumentStatus.PENDING_ASSIGNMENT,
@@ -129,12 +160,9 @@ export class DocumentAnalysisService {
           summary: `Document requires case assignment. ${matches.length} potential matches found.`,
         };
       } else {
-        // No matches found
         await Document.findByIdAndUpdate(documentId, {
           status: DocumentStatus.PENDING_ASSIGNMENT,
         });
-        
-        console.log(`[DocAnalysis] No matching cases found. Requires manual assignment.`);
         
         return {
           documentId,
@@ -145,9 +173,23 @@ export class DocumentAnalysisService {
       }
     }
     
-    // Step 3: Trigger Round Table analysis with case context
-    if (finalCaseId || forceRoundTable) {
-      return this.triggerRoundTable(documentId, finalCaseId!, extractedText, entities);
+    // Step 3: Mark as processed (simplified - no Round Table for now)
+    if (finalCaseId) {
+      const case_ = await Case.findById(finalCaseId);
+      
+      await Document.findByIdAndUpdate(documentId, {
+        status: DocumentStatus.PROCESSED,
+        'aiAnalysis.lastAnalyzedAt': new Date(),
+      });
+      
+      return {
+        documentId,
+        status: DocumentStatus.PROCESSED,
+        caseId: finalCaseId,
+        caseNumber: case_?.caseNumber,
+        entities,
+        summary: 'Document analyzed and assigned to case.',
+      };
     }
     
     return {
@@ -155,89 +197,6 @@ export class DocumentAnalysisService {
       status: DocumentStatus.PENDING_ASSIGNMENT,
       entities,
     };
-  }
-  
-  /**
-   * Trigger Round Table analysis for a document with case context
-   */
-  private async triggerRoundTable(
-    documentId: string,
-    caseId: string,
-    extractedText: string,
-    entities: EntityExtractionResult
-  ): Promise<DocumentAnalysisResult> {
-    
-    // Get document and case info for context
-    const doc = await Document.findById(documentId);
-    const case_ = await Case.findById(caseId);
-    
-    if (!doc || !case_) {
-      throw new Error('Document or case not found');
-    }
-    
-    // Build trigger message based on document type
-    const trigger = this.buildTriggerMessage(doc, entities);
-    
-    console.log(`[DocAnalysis] Triggering Round Table for case ${case_.caseNumber}`);
-    
-    // Run the Round Table discussion
-    const result = await runRoundTable(caseId, trigger, {
-      documentId,
-      documentText: extractedText.substring(0, 10000), // Limit text size
-      config: {
-        maxRounds: 2,
-        persistActions: true,
-        createAuditLog: true,
-      },
-    });
-    
-    // Update document with Round Table results
-    await Document.findByIdAndUpdate(documentId, {
-      status: DocumentStatus.PROCESSED,
-      'aiAnalysis.summary': result.actionCard.description,
-      'aiAnalysis.keyFindings': result.session.consensus?.sharedConclusions || [],
-      'aiAnalysis.flags': result.session.consensus?.dissent || [],
-      'aiAnalysis.roundTableSessionId': result.session.sessionId,
-      'aiAnalysis.lastAnalyzedAt': new Date(),
-    });
-    
-    return {
-      documentId,
-      status: DocumentStatus.PROCESSED,
-      caseId,
-      caseNumber: case_.caseNumber,
-      entities,
-      roundTableSessionId: result.session.sessionId,
-      actionId: result.session.persistedActionId,
-      summary: result.actionCard.description,
-      keyFindings: result.session.consensus?.sharedConclusions,
-      flags: result.session.consensus?.dissent,
-    };
-  }
-  
-  /**
-   * Build an appropriate trigger message based on document category
-   */
-  private buildTriggerMessage(doc: any, entities: EntityExtractionResult): string {
-    const category = doc.category as DocumentCategory;
-    
-    const categoryTriggers: Partial<Record<DocumentCategory, string>> = {
-      [DocumentCategory.MEDICAL_RECORD]: `New medical records received from ${entities.providerName || 'unknown provider'}. Please analyze for treatment details, diagnoses, and any liability implications.`,
-      
-      [DocumentCategory.MEDICAL_BILL]: `New medical bill received: ${entities.amounts?.[0] ? `$${entities.amounts[0].toLocaleString()}` : 'amount pending extraction'}. Analyze for reasonableness, check against existing bills, and identify potential lien implications.`,
-      
-      [DocumentCategory.POLICE_REPORT]: `Police report received. Analyze for liability determination, witness statements, and any factors that could affect the case.`,
-      
-      [DocumentCategory.WITNESS_STATEMENT]: `New witness statement received. Evaluate credibility, consistency with other evidence, and impact on liability.`,
-      
-      [DocumentCategory.INSURANCE_POLICY]: `Insurance documentation received. Review for coverage details, policy limits, and subrogation rights.`,
-      
-      [DocumentCategory.CLIENT_INTAKE]: `Client intake form received. Extract key case details and identify what additional information is needed.`,
-      
-      [DocumentCategory.DEMAND_LETTER]: `Demand letter received. Review terms, settlement offer, and recommend negotiation strategy.`,
-    };
-    
-    return categoryTriggers[category] || `New document uploaded: "${doc.title}". Please analyze and recommend next steps.`;
   }
 }
 

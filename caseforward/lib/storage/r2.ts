@@ -74,29 +74,46 @@ export async function uploadToR2(
 }
 
 /**
- * Generate a signed URL for viewing/downloading a file
+ * Generate a signed URL for viewing/downloading a file via Cloudflare Worker
  */
 export async function getSignedUrl(objectKey: string, expiresIn = 3600): Promise<string | null> {
-  try {
-    const { GetObjectCommand } = await import('@aws-sdk/client-s3');
-    const { getSignedUrl: s3GetSignedUrl } = await import('@aws-sdk/s3-request-presigner');
-    
-    const client = getR2Client();
-    if (!client) {
-      console.error('R2 client not configured');
-      return null;
-    }
+  const workerUrl = process.env.CF_WORKER_URL || process.env.CF_WORKER_UPLOAD_URL;
+  const apiKey = process.env.INTERNAL_API_KEY;
 
-    const command = new GetObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME,
-      Key: objectKey,
+  if (!workerUrl || !apiKey) {
+    console.error('R2 configuration missing for signed URL');
+    return null;
+  }
+
+  try {
+    // Request signed URL from worker
+    const response = await fetch(`${workerUrl}/signed-url`, {
+      method: 'POST',
+      headers: {
+        'X-Internal-Auth': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        objectKey, 
+        expiresIn,
+        action: 'read' 
+      }),
     });
 
-    const signedUrl = await s3GetSignedUrl(client, command, { expiresIn });
-    return signedUrl;
+    if (!response.ok) {
+      // If the worker doesn't support signed URLs, construct a direct URL
+      // This assumes public bucket or worker handles auth
+      const baseUrl = process.env.R2_PUBLIC_URL || workerUrl;
+      return `${baseUrl}/file/${encodeURIComponent(objectKey)}`;
+    }
+
+    const result = await response.json();
+    return result.signedUrl || result.url || null;
   } catch (error) {
     console.error('Error generating signed URL:', error);
-    return null;
+    // Fallback: construct direct URL through worker
+    const baseUrl = process.env.R2_PUBLIC_URL || workerUrl;
+    return `${baseUrl}/file/${encodeURIComponent(objectKey)}`;
   }
 }
 

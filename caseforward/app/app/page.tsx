@@ -49,29 +49,32 @@ export default async function Dashboard() {
     archivedCases =
       cases?.filter((c: ICase) => c.status === CaseStatus.CLOSED).length || 0;
 
-    // Use real cases data
+    // Use real cases data - ensure id is always a string
     caseList =
-      cases?.slice(0, 4).map((c: any) => ({
-        id: c._id.toString(), // Add this line
-        caseNum: c.caseNumber,
-        status: c.status || CaseStatus.INTAKE, // Add this line
-        client:
-          `${c.client?.firstName || ""} ${c.client?.lastName || "Unknown"}`.trim(),
-        caseName: c.title || c.description || "Untitled Case",
-        incidentDate: c.incidentDate
-          ? new Date(c.incidentDate).toLocaleDateString()
-          : "N/A",
-      })) || [];
+      cases?.slice(0, 4).map((c: any) => {
+        const caseIdStr = c._id ? c._id.toString() : '';
+        return {
+          id: caseIdStr,
+          caseNum: c.caseNumber || 'Unknown',
+          status: c.status || CaseStatus.INTAKE,
+          client: `${c.client?.firstName || ""} ${c.client?.lastName || "Unknown"}`.trim(),
+          caseName: c.title || c.incidentDescription?.substring(0, 50) || "Untitled Case",
+          incidentDate: c.incidentDate
+            ? new Date(c.incidentDate).toLocaleDateString()
+            : "N/A",
+        };
+      }) || [];
 
     actionItems =
-      cases?.slice(0, 3).map((c: ICase) => ({
-        id: c._id?.toString?.() || c.caseNumber,
-        caseNum: c.caseNumber,
-        status: c.status || CaseStatus.INTAKE,
-        action:
-          c.aiMetadata?.nextSteps?.[0] ||
-          `Review case details for ${c.client?.firstName || "client"}`,
-      })) || [];
+      cases?.slice(0, 3).map((c: any) => {
+        const caseIdStr = c._id ? c._id.toString() : '';
+        return {
+          id: caseIdStr,
+          caseNum: c.caseNumber || 'Unknown',
+          status: c.status || CaseStatus.INTAKE,
+          action: c.aiMetadata?.nextSteps?.[0] || `Review case details for ${c.client?.firstName || "client"}`,
+        };
+      }) || [];
 
     activityItems =
       cases?.slice(0, 8).map((c: ICase) => ({
@@ -156,23 +159,31 @@ export default async function Dashboard() {
                     className="border-b border-gray-100 hover:bg-gray-50"
                   >
                     <td className="px-6 py-4 text-base font-semibold text-gray-900">
-                      <Link
-                        href={`/app/case/${item.id}`}
-                        className="text-[#4b1d1d] hover:underline"
-                      >
-                        {item.caseNum}
-                      </Link>
+                      {item.id ? (
+                        <Link
+                          href={`/app/case/${item.id}/documents`}
+                          className="text-[#4b1d1d] hover:underline"
+                        >
+                          {item.caseNum}
+                        </Link>
+                      ) : (
+                        <span>{item.caseNum}</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-base">
                       <StatusBadge status={item.status} />
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
-                      <Link
-                        href={`/app/case/${item.id}`}
-                        className="text-[#4b1d1d] hover:underline"
-                      >
-                        {item.action}
-                      </Link>
+                      {item.id ? (
+                        <Link
+                          href={`/app/case/${item.id}/documents`}
+                          className="text-[#4b1d1d] hover:underline"
+                        >
+                          {item.action}
+                        </Link>
+                      ) : (
+                        <span>{item.action}</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -219,28 +230,40 @@ export default async function Dashboard() {
                     className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
                   >
                     <td className="px-6 py-4 text-base font-semibold text-gray-900">
-                      <Link
-                        href={`/app/case/${item.id}/documents`}
-                        className="hover:text-blue-600 hover:underline"
-                      >
-                        {item.caseNum}
-                      </Link>
+                      {item.id ? (
+                        <Link
+                          href={`/app/case/${item.id}/documents`}
+                          className="hover:text-blue-600 hover:underline"
+                        >
+                          {item.caseNum}
+                        </Link>
+                      ) : (
+                        <span>{item.caseNum}</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
-                      <Link
-                        href={`/app/case/${item.id}/documents`}
-                        className="hover:text-blue-600"
-                      >
-                        {item.client}
-                      </Link>
+                      {item.id ? (
+                        <Link
+                          href={`/app/case/${item.id}/documents`}
+                          className="hover:text-blue-600"
+                        >
+                          {item.client}
+                        </Link>
+                      ) : (
+                        <span>{item.client}</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
-                      <Link
-                        href={`/app/case/${item.id}/documents`}
-                        className="hover:text-blue-600"
-                      >
-                        {item.caseName}
-                      </Link>
+                      {item.id ? (
+                        <Link
+                          href={`/app/case/${item.id}/documents`}
+                          className="hover:text-blue-600"
+                        >
+                          {item.caseName}
+                        </Link>
+                      ) : (
+                        <span>{item.caseName}</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
                       {item.incidentDate}
