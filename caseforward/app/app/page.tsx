@@ -1,13 +1,15 @@
 import { auth0 } from "@/lib/auth0";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { Radley } from "next/font/google";
 import { CaseStatus } from "@/lib/db/types/enums";
 import dbConnect from "@/lib/db/dbConnect";
 import { getCases } from "@/lib/db/models/Case";
 import type { ICase } from "@/lib/db/models";
 import SidebarClient from "@/components/SidebarClient";
-import StatusBadge from "@/components/StatusBadge";
+import DashboardActionItems from "@/components/DashboardActionItems";
+import DashboardCaseList from "@/components/DashboardCaseList";
+import DashboardActivityFeed from "@/components/DashboardActivityFeed";
+import NewCaseButton from "@/components/NewCaseButton";
 
 const radley = Radley({ subsets: ["latin"], weight: "400" });
 
@@ -52,13 +54,17 @@ export default async function Dashboard() {
     // Use real cases data - ensure id is always a string
     caseList =
       cases?.slice(0, 4).map((c: any) => {
-        const caseIdStr = c._id ? c._id.toString() : '';
+        const caseIdStr = c._id ? c._id.toString() : "";
         return {
           id: caseIdStr,
-          caseNum: c.caseNumber || 'Unknown',
+          caseNum: c.caseNumber || "Unknown",
           status: c.status || CaseStatus.INTAKE,
-          client: `${c.client?.firstName || ""} ${c.client?.lastName || "Unknown"}`.trim(),
-          caseName: c.title || c.incidentDescription?.substring(0, 50) || "Untitled Case",
+          client:
+            `${c.client?.firstName || ""} ${c.client?.lastName || "Unknown"}`.trim(),
+          caseName:
+            c.title ||
+            c.incidentDescription?.substring(0, 50) ||
+            "Untitled Case",
           incidentDate: c.incidentDate
             ? new Date(c.incidentDate).toLocaleDateString()
             : "N/A",
@@ -67,12 +73,14 @@ export default async function Dashboard() {
 
     actionItems =
       cases?.slice(0, 3).map((c: any) => {
-        const caseIdStr = c._id ? c._id.toString() : '';
+        const caseIdStr = c._id ? c._id.toString() : "";
         return {
           id: caseIdStr,
-          caseNum: c.caseNumber || 'Unknown',
+          caseNum: c.caseNumber || "Unknown",
           status: c.status || CaseStatus.INTAKE,
-          action: c.aiMetadata?.nextSteps?.[0] || `Review case details for ${c.client?.firstName || "client"}`,
+          action:
+            c.aiMetadata?.nextSteps?.[0] ||
+            `Review case details for ${c.client?.firstName || "client"}`,
         };
       }) || [];
 
@@ -102,15 +110,20 @@ export default async function Dashboard() {
 
       {/* Main Content */}
       <main className="flex-1 p-8">
-        {/* Header with Stats */}
-        <div className="mb-8 flex items-center justify-between">
-          <Link
-            href="/app/case/new"
-            className="bg-[#f0a56b] text-[#4b1d1d] px-6 py-3 rounded font-semibold flex items-center gap-2 hover:bg-amber-400 text-lg"
+        {/* Header with Stats and Title */}
+        <div className="mb-8 relative flex items-center justify-center">
+          <div className="absolute left-0">
+            <NewCaseButton />
+          </div>
+
+          {/* Dashboard Title */}
+          <h2
+            className={`text-7xl font-black text-[#4b1d1d] tracking-wide ${radley.className}`}
           >
-            <span>+</span> Register New Case
-          </Link>
-          <div className="flex gap-6">
+            Dashboard
+          </h2>
+
+          <div className="absolute right-0 flex gap-6">
             <div className="bg-white rounded-lg shadow px-6 py-4">
               <p className="text-base text-gray-600">Active Cases</p>
               <p className="text-4xl font-bold text-[#4b1d1d]">{activeCases}</p>
@@ -124,186 +137,12 @@ export default async function Dashboard() {
           </div>
         </div>
 
-        {/* Action Items Section */}
-        <div className="mb-8">
-          <div className="bg-[#4b1d1d] text-white p-4 rounded-t-lg flex justify-between items-center">
-            <h2 className={`text-3xl font-bold ${radley.className}`}>
-              Action Items
-            </h2>
-            <Link
-              href="/app/cases"
-              className="text-base text-amber-200 hover:text-amber-100"
-            >
-              View More
-            </Link>
-          </div>
-          <div className="bg-white rounded-b-lg shadow overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-6 py-4 text-left text-base font-semibold text-gray-900">
-                    Case #
-                  </th>
-                  <th className="px-6 py-4 text-left text-base font-semibold text-gray-900">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-base font-semibold text-gray-900">
-                    Action Needed
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {actionItems.map((item, idx) => (
-                  <tr
-                    key={idx}
-                    className="border-b border-gray-100 hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-4 text-base font-semibold text-gray-900">
-                      {item.id ? (
-                        <Link
-                          href={`/app/case/${item.id}/documents`}
-                          className="text-[#4b1d1d] hover:underline"
-                        >
-                          {item.caseNum}
-                        </Link>
-                      ) : (
-                        <span>{item.caseNum}</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-base">
-                      <StatusBadge status={item.status} />
-                    </td>
-                    <td className="px-6 py-4 text-base text-gray-700">
-                      {item.id ? (
-                        <Link
-                          href={`/app/case/${item.id}/documents`}
-                          className="text-[#4b1d1d] hover:underline"
-                        >
-                          {item.action}
-                        </Link>
-                      ) : (
-                        <span>{item.action}</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {/* Action Items and Case List Side by Side */}
+        <div className="grid grid-cols-2 gap-8 mb-8">
+          <DashboardActionItems actionItems={actionItems} />
+          <DashboardCaseList caseList={caseList} />
         </div>
-
-        {/* Case List Section */}
-        <div className="mb-8">
-          <div className="bg-[#4b1d1d] text-white p-4 rounded-t-lg flex justify-between items-center">
-            <h2 className={`text-3xl font-bold ${radley.className}`}>
-              Case List
-            </h2>
-            <Link
-              href="/app/cases"
-              className="text-base text-amber-200 hover:text-amber-100"
-            >
-              View More
-            </Link>
-          </div>
-          <div className="bg-white rounded-b-lg shadow overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-6 py-4 text-left text-base font-semibold text-gray-900">
-                    Case #
-                  </th>
-                  <th className="px-6 py-4 text-left text-base font-semibold text-gray-900">
-                    Client
-                  </th>
-                  <th className="px-6 py-4 text-left text-base font-semibold text-gray-900">
-                    Case Name
-                  </th>
-                  <th className="px-6 py-4 text-left text-base font-semibold text-gray-900">
-                    Incident Date
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {caseList.map((item, idx) => (
-                  <tr
-                    key={idx}
-                    className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                  >
-                    <td className="px-6 py-4 text-base font-semibold text-gray-900">
-                      {item.id ? (
-                        <Link
-                          href={`/app/case/${item.id}/documents`}
-                          className="hover:text-blue-600 hover:underline"
-                        >
-                          {item.caseNum}
-                        </Link>
-                      ) : (
-                        <span>{item.caseNum}</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-base text-gray-700">
-                      {item.id ? (
-                        <Link
-                          href={`/app/case/${item.id}/documents`}
-                          className="hover:text-blue-600"
-                        >
-                          {item.client}
-                        </Link>
-                      ) : (
-                        <span>{item.client}</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-base text-gray-700">
-                      {item.id ? (
-                        <Link
-                          href={`/app/case/${item.id}/documents`}
-                          className="hover:text-blue-600"
-                        >
-                          {item.caseName}
-                        </Link>
-                      ) : (
-                        <span>{item.caseName}</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-base text-gray-700">
-                      {item.incidentDate}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Activity Feed Section */}
-        <div>
-          <div className="bg-[#4b1d1d] text-white p-4 rounded-t-lg flex justify-between items-center">
-            <h2 className={`text-3xl font-bold ${radley.className}`}>
-              Activity Feed
-            </h2>
-            <button className="text-base text-amber-200 hover:text-amber-100">
-              View All Activity
-            </button>
-          </div>
-          <div className="bg-white rounded-b-lg shadow p-6">
-            <div className="space-y-4">
-              {activityItems.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex gap-4 pb-4 border-b border-gray-100 last:border-0"
-                >
-                  <span className="text-green-500">✓</span>
-                  <div>
-                    <p className="text-base font-semibold text-gray-700">
-                      {item.time}
-                    </p>
-                    <p className="text-base text-gray-600">{item.action}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <DashboardActivityFeed activityItems={activityItems} />
       </main>
     </div>
   );
