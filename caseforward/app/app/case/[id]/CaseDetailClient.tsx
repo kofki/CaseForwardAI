@@ -30,7 +30,7 @@ export default function CaseDetailClient({ case_, actions, session }: CaseDetail
       const response = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caseId: case_._id }),
+        body: JSON.stringify({ caseId: case_._id?.toString() }),
       });
 
       if (!response.ok) {
@@ -38,7 +38,6 @@ export default function CaseDetailClient({ case_, actions, session }: CaseDetail
       }
 
       const result = await response.json();
-      // Ensure type safety for actionCard
       if (result.actionCard && ['approve', 'reject', 'review'].includes(result.actionCard.recommendation)) {
         setActionCard(result.actionCard as Action['actionCard']);
       }
@@ -80,7 +79,6 @@ export default function CaseDetailClient({ case_, actions, session }: CaseDetail
       message: 'Case approved',
       timestamp: new Date(),
     }]);
-    // Refresh page or update UI
     window.location.reload();
   };
 
@@ -90,7 +88,6 @@ export default function CaseDetailClient({ case_, actions, session }: CaseDetail
       message: `Case rejected: ${comment}`,
       timestamp: new Date(),
     }]);
-    // Refresh page or update UI
     window.location.reload();
   };
 
@@ -132,9 +129,9 @@ export default function CaseDetailClient({ case_, actions, session }: CaseDetail
               <div>
                 <span className="text-sm font-medium text-gray-700">Status:</span>
                 <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${
-                  case_.status === 'approved' ? 'bg-green-100 text-green-800' :
-                  case_.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                  case_.status === 'reviewed' ? 'bg-blue-100 text-blue-800' :
+                  case_.status === 'settled' || case_.status === 'closed' ? 'bg-green-100 text-green-800' :
+                  case_.status === 'investigation' || case_.status === 'litigation' || case_.status === 'trial' ? 'bg-red-100 text-red-800' :
+                  case_.status === 'intake' ? 'bg-blue-100 text-blue-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
                   {case_.status}
@@ -195,7 +192,7 @@ export default function CaseDetailClient({ case_, actions, session }: CaseDetail
         {actionCard && (
           <div className="mt-6">
             <SwipeContainer
-              caseId={case_._id!}
+              caseId={case_._id!.toString()}
               actionCard={actionCard}
               onApprove={handleApprove}
               onReject={handleReject}
@@ -209,7 +206,7 @@ export default function CaseDetailClient({ case_, actions, session }: CaseDetail
             <h2 className="text-xl font-semibold mb-4">Previous Actions</h2>
             <div className="space-y-4">
               {actions.map((action) => (
-                <div key={action._id} className="border-l-4 border-blue-500 pl-4 py-2">
+                <div key={action._id?.toString()} className="border-l-4 border-blue-500 pl-4 py-2">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-sm font-medium text-gray-700">Type:</span>
                     <span className="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800">
@@ -219,7 +216,7 @@ export default function CaseDetailClient({ case_, actions, session }: CaseDetail
                       {new Date(action.createdAt).toLocaleString()}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600">{action.actionCard.reasoning}</p>
+                  <p className="text-sm text-gray-600">{action.actionCard?.reasoning ?? ''}</p>
                 </div>
               ))}
             </div>

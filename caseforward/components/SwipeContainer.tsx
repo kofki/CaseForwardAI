@@ -5,9 +5,10 @@ import { useState } from 'react';
 interface SwipeContainerProps {
   caseId: string;
   actionCard?: {
-    recommendation: 'approve' | 'reject' | 'review';
-    reasoning: string;
-    confidence: number;
+    recommendation?: 'approve' | 'reject' | 'review' | string;
+    reasoning?: string;
+    confidence?: number;
+    [key: string]: any;
   };
   onApprove: () => void;
   onReject: (comment: string) => void;
@@ -67,15 +68,15 @@ export default function SwipeContainer({ caseId, actionCard, onApprove, onReject
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-semibold text-gray-700">Recommendation:</span>
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              actionCard.recommendation === 'approve' ? 'bg-green-100 text-green-800' :
-              actionCard.recommendation === 'reject' ? 'bg-red-100 text-red-800' :
+              (actionCard?.recommendation ?? '') === 'approve' ? 'bg-green-100 text-green-800' :
+              (actionCard?.recommendation ?? '') === 'reject' ? 'bg-red-100 text-red-800' :
               'bg-yellow-100 text-yellow-800'
             }`}>
-              {actionCard.recommendation.toUpperCase()}
+              {(actionCard?.recommendation ?? '').toString().toUpperCase()}
             </span>
           </div>
-          <p className="text-sm text-gray-600 mb-2">{actionCard.reasoning}</p>
-          <div className="text-xs text-gray-500">Confidence: {actionCard.confidence}%</div>
+          <p className="text-sm text-gray-600 mb-2">{actionCard?.reasoning ?? ''}</p>
+          <div className="text-xs text-gray-500">Confidence: {actionCard?.confidence ?? 0}%</div>
         </div>
       )}
 
