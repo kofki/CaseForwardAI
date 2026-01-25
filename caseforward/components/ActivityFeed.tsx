@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Case } from "@/lib/db/models";
 import { Poppins, Radley } from "next/font/google";
 
 const poppins = Poppins({ subsets: ["latin"], weight: "500" });

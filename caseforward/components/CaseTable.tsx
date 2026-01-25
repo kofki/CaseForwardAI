@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Case } from "@/lib/db/models";
+import { ICase } from "@/lib/db/models";
 import StatusBadge from "./StatusBadge";
 import { Poppins, Radley } from "next/font/google";
 
@@ -7,7 +7,7 @@ const poppins = Poppins({ subsets: ["latin"], weight: "500" });
 const radley = Radley({ subsets: ["latin"], weight: "400" });
 
 interface CaseTableProps {
-  cases: Case[];
+  cases: ICase[];
   title?: string;
   showActions?: boolean;
 }
@@ -54,7 +54,7 @@ export default function CaseTable({
                     href={`/app/case/${caseItem._id}`}
                     className="text-gray-900 hover:text-[#4b1d1d] font-semibold"
                   >
-                    {caseItem.caseName}
+                    {caseItem.title || caseItem.caseNumber}
                   </Link>
                 </td>
                 <td className="px-6 py-4 text-gray-600">
@@ -62,7 +62,7 @@ export default function CaseTable({
                     href={`/app/case/${caseItem._id}`}
                     className="hover:text-[#4b1d1d]"
                   >
-                    {caseItem.clientName}
+                    {`${caseItem.client.firstName} ${caseItem.client.lastName}`}
                   </Link>
                 </td>
                 <td className="px-6 py-4">
@@ -78,7 +78,7 @@ export default function CaseTable({
                     href={`/app/case/${caseItem._id}`}
                     className="hover:text-[#4b1d1d]"
                   >
-                    {new Date(caseItem.dateCreated).toLocaleDateString()}
+                    {new Date(caseItem.createdAt).toLocaleDateString()}
                   </Link>
                 </td>
                 {showActions && (

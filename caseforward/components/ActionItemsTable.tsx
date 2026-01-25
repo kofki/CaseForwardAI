@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Action } from "@/lib/db/models";
+import { IAction } from "@/lib/db/models";
 import StatusBadge from "./StatusBadge";
 import { Poppins, Radley } from "next/font/google";
 
@@ -7,7 +7,7 @@ const poppins = Poppins({ subsets: ["latin"], weight: "500" });
 const radley = Radley({ subsets: ["latin"], weight: "400" });
 
 interface ActionItemsTableProps {
-  actions: Action[];
+  actions: IAction[];
   title?: string;
 }
 
@@ -45,7 +45,7 @@ export default function ActionItemsTable({
                     href={`/app/case/${action.caseId}`}
                     className="hover:text-[#4b1d1d]"
                   >
-                    {action.actionText}
+                    {action.title}
                   </Link>
                 </td>
                 <td className="px-6 py-4 text-gray-600">
@@ -69,7 +69,7 @@ export default function ActionItemsTable({
                     href={`/app/case/${action.caseId}`}
                     className="hover:text-[#4b1d1d]"
                   >
-                    {new Date(action.dueDate).toLocaleDateString()}
+                    {new Date(action.createdAt).toLocaleDateString()}
                   </Link>
                 </td>
               </tr>
