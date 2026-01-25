@@ -103,7 +103,7 @@ export default async function CasesPage() {
                   >
                     <td className="px-6 py-4 text-base font-semibold text-[#4b1d1d]">
                       <Link
-                        href={`/app/case/${item.id}`}
+                        href={`/app/case/${item.id}/documents`}
                         className="hover:underline"
                       >
                         {item.caseNum}
@@ -111,7 +111,7 @@ export default async function CasesPage() {
                     </td>
                     <td className="px-6 py-4 text-base text-gray-800">
                       <Link
-                        href={`/app/case/${item.id}`}
+                        href={`/app/case/${item.id}/documents`}
                         className="hover:underline"
                       >
                         {item.client}
@@ -119,7 +119,7 @@ export default async function CasesPage() {
                     </td>
                     <td className="px-6 py-4 text-base text-gray-800">
                       <Link
-                        href={`/app/case/${item.id}`}
+                        href={`/app/case/${item.id}/documents`}
                         className="hover:underline"
                       >
                         {item.caseName}
@@ -127,7 +127,7 @@ export default async function CasesPage() {
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
                       <Link
-                        href={`/app/case/${item.id}`}
+                        href={`/app/case/${item.id}/documents`}
                         className="hover:underline"
                       >
                         {item.incidentDate}

@@ -42,7 +42,7 @@ export default function ActionItemsTable({
               >
                 <td className="px-6 py-4 font-semibold text-gray-900">
                   <Link
-                    href={`/app/case/${action.caseId}`}
+                    href={`/app/case/${action.caseId}/documents`}
                     className="hover:text-[#4b1d1d]"
                   >
                     {action.title}
@@ -50,7 +50,7 @@ export default function ActionItemsTable({
                 </td>
                 <td className="px-6 py-4 text-gray-600">
                   <Link
-                    href={`/app/case/${action.caseId}`}
+                    href={`/app/case/${action.caseId}/documents`}
                     className="hover:text-[#4b1d1d]"
                   >
                     {action.caseId?.toString()}
@@ -58,7 +58,7 @@ export default function ActionItemsTable({
                 </td>
                 <td className="px-6 py-4">
                   <Link
-                    href={`/app/case/${action.caseId}`}
+                    href={`/app/case/${action.caseId}/documents`}
                     className="hover:text-[#4b1d1d]"
                   >
                     <StatusBadge status={action.status} />
@@ -66,7 +66,7 @@ export default function ActionItemsTable({
                 </td>
                 <td className="px-6 py-4 text-gray-600">
                   <Link
-                    href={`/app/case/${action.caseId}`}
+                    href={`/app/case/${action.caseId}/documents`}
                     className="hover:text-[#4b1d1d]"
                   >
                     {new Date(action.createdAt).toLocaleDateString()}

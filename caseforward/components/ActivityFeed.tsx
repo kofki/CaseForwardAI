@@ -40,7 +40,7 @@ export default function ActivityFeed({
                   className={`text-lg font-semibold text-gray-900 ${poppins.className}`}
                 >
                   <Link
-                    href={`/app/case/${activity.caseId}`}
+                    href={`/app/case/${activity.caseId}/documents`}
                     className="hover:text-[#4b1d1d]"
                   >
                     {activity.caseName}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { Radley, Poppins } from 'next/font/google';
 import {
@@ -35,6 +35,7 @@ import {
   Maximize2,
   Loader2,
   Settings,
+  GripVertical,
 } from 'lucide-react';
 
 const radley = Radley({ subsets: ['latin'], weight: '400' });
@@ -119,7 +120,8 @@ function needsAttention(status: string): boolean {
   return status?.includes('fail') || status === 'pending_assignment';
 }
 
-export default function DocumentGalleryClient({ caseId, caseNumber, caseType, clientName, documents }: Props) {
+export default function DocumentGalleryClient({ caseId, caseNumber, caseType, clientName, documents: initialDocuments }: Props) {
+  const [documents, setDocuments] = useState<DocumentData[]>(initialDocuments);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['medical_record', 'police_report']));
   const [viewingDoc, setViewingDoc] = useState<DocumentData | null>(null);
   const [docContent, setDocContent] = useState<string>('');
@@ -129,6 +131,12 @@ export default function DocumentGalleryClient({ caseId, caseNumber, caseType, cl
   const [showStatusPanel, setShowStatusPanel] = useState(false);
   const [caseStatus, setCaseStatus] = useState<string>('intake');
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  
+  // Drag and drop state
+  const [draggedDoc, setDraggedDoc] = useState<DocumentData | null>(null);
+  const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
+  const [dragOverDocId, setDragOverDocId] = useState<string | null>(null);
+  const dragCounter = useRef(0);
 
   const visibleCategories = ALL_CATEGORIES.filter(cat => {
     if (cat.universal) return true;
@@ -153,6 +161,149 @@ export default function DocumentGalleryClient({ caseId, caseNumber, caseType, cl
       next.has(category) ? next.delete(category) : next.add(category);
       return next;
     });
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, doc: DocumentData) => {
+    setDraggedDoc(doc);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', doc._id);
+    // Add a slight delay before adding dragging class for better visual feedback
+    setTimeout(() => {
+      const element = document.getElementById(`doc-${doc._id}`);
+      if (element) element.classList.add('opacity-50');
+    }, 0);
+  };
+
+  const handleDragEnd = () => {
+    if (draggedDoc) {
+      const element = document.getElementById(`doc-${draggedDoc._id}`);
+      if (element) element.classList.remove('opacity-50');
+    }
+    setDraggedDoc(null);
+    setDragOverCategory(null);
+    setDragOverDocId(null);
+    dragCounter.current = 0;
+  };
+
+  const handleDragEnterCategory = (e: React.DragEvent, category: string) => {
+    e.preventDefault();
+    dragCounter.current++;
+    if (draggedDoc && draggedDoc.category !== category) {
+      setDragOverCategory(category);
+      // Auto-expand the category when dragging over
+      setExpandedCategories(prev => new Set(prev).add(category));
+    }
+  };
+
+  const handleDragLeaveCategory = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setDragOverCategory(null);
+    }
+  };
+
+  const handleDragOverCategory = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDropOnCategory = async (e: React.DragEvent, targetCategory: string) => {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setDragOverCategory(null);
+    setDragOverDocId(null);
+
+    if (!draggedDoc || draggedDoc.category === targetCategory) {
+      handleDragEnd();
+      return;
+    }
+
+    // Optimistically update the UI
+    setDocuments(prev => prev.map(doc => 
+      doc._id === draggedDoc._id 
+        ? { ...doc, category: targetCategory }
+        : doc
+    ));
+
+    // Update on the server
+    try {
+      const res = await fetch(`/api/documents/${draggedDoc._id}/categorize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: targetCategory }),
+      });
+      
+      if (!res.ok) {
+        // Revert on failure
+        setDocuments(prev => prev.map(doc => 
+          doc._id === draggedDoc._id 
+            ? { ...doc, category: draggedDoc.category }
+            : doc
+        ));
+        console.error('Failed to update document category');
+      }
+    } catch (error) {
+      // Revert on error
+      setDocuments(prev => prev.map(doc => 
+        doc._id === draggedDoc._id 
+          ? { ...doc, category: draggedDoc.category }
+          : doc
+      ));
+      console.error('Error updating document category:', error);
+    }
+
+    handleDragEnd();
+  };
+
+  const handleDragOverDoc = (e: React.DragEvent, docId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedDoc && draggedDoc._id !== docId) {
+      setDragOverDocId(docId);
+    }
+  };
+
+  const handleDragLeaveDoc = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverDocId(null);
+  };
+
+  const handleDropOnDoc = async (e: React.DragEvent, targetDoc: DocumentData, categoryDocs: DocumentData[]) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!draggedDoc) {
+      handleDragEnd();
+      return;
+    }
+
+    const targetCategory = targetDoc.category || 'other';
+    
+    // If moving to a different category
+    if (draggedDoc.category !== targetCategory) {
+      await handleDropOnCategory(e, targetCategory);
+      return;
+    }
+
+    // Reorder within the same category
+    const targetIndex = categoryDocs.findIndex(d => d._id === targetDoc._id);
+    const sourceIndex = categoryDocs.findIndex(d => d._id === draggedDoc._id);
+    
+    if (targetIndex !== -1 && sourceIndex !== -1 && targetIndex !== sourceIndex) {
+      const newDocs = [...documents];
+      const catDocs = newDocs.filter(d => (d.category || 'other') === targetCategory);
+      const otherDocs = newDocs.filter(d => (d.category || 'other') !== targetCategory);
+      
+      // Remove the dragged doc and insert at new position
+      const [movedDoc] = catDocs.splice(sourceIndex, 1);
+      catDocs.splice(targetIndex > sourceIndex ? targetIndex : targetIndex, 0, movedDoc);
+      
+      setDocuments([...otherDocs, ...catDocs]);
+    }
+
+    handleDragEnd();
   };
 
   const updateCaseStatus = async (newStatus: string) => {
@@ -368,7 +519,19 @@ export default function DocumentGalleryClient({ caseId, caseNumber, caseType, cl
                       <p className="text-xs font-semibold text-[#4b1d1d]/50 uppercase tracking-wider">{cat.group}</p>
                     </div>
                   )}
-                  <div className={`bg-white shadow border overflow-hidden ${hasAttention ? 'border-[#4b1d1d]' : hasNewDocs ? 'border-green-300' : 'border-[#e6ded3]'}`}>
+                  <div 
+                    className={`bg-white shadow border overflow-hidden transition-all duration-200 ${
+                      dragOverCategory === cat.key 
+                        ? 'border-[#4b1d1d] border-2 ring-2 ring-[#4b1d1d]/20' 
+                        : hasAttention ? 'border-[#4b1d1d]' 
+                        : hasNewDocs ? 'border-green-300' 
+                        : 'border-[#e6ded3]'
+                    }`}
+                    onDragEnter={(e) => handleDragEnterCategory(e, cat.key)}
+                    onDragLeave={handleDragLeaveCategory}
+                    onDragOver={handleDragOverCategory}
+                    onDrop={(e) => handleDropOnCategory(e, cat.key)}
+                  >
                     <button
                       onClick={() => toggleCategory(cat.key)}
                       className={`w-full px-5 py-3 flex items-center justify-between transition-colors ${
@@ -393,9 +556,27 @@ export default function DocumentGalleryClient({ caseId, caseNumber, caseType, cl
                     {isExpanded && docs.length > 0 && (
                       <div className="divide-y divide-gray-100">
                         {docs.map(doc => (
-                          <div key={doc._id} onClick={() => openDocument(doc)} className={`px-5 py-3 flex items-center justify-between cursor-pointer ${viewingDoc?._id === doc._id ? 'bg-amber-100' : 'hover:bg-amber-50'}`}>
+                          <div 
+                            key={doc._id}
+                            id={`doc-${doc._id}`}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, doc)}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => handleDragOverDoc(e, doc._id)}
+                            onDragLeave={handleDragLeaveDoc}
+                            onDrop={(e) => handleDropOnDoc(e, doc, docs)}
+                            onClick={() => openDocument(doc)} 
+                            className={`px-5 py-3 flex items-center justify-between cursor-grab active:cursor-grabbing transition-all duration-150 ${
+                              viewingDoc?._id === doc._id 
+                                ? 'bg-amber-100' 
+                                : dragOverDocId === doc._id 
+                                  ? 'bg-[#4b1d1d]/10 border-t-2 border-[#4b1d1d]' 
+                                  : 'hover:bg-amber-50'
+                            }`}
+                          >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <FileText size={18} className="text-gray-400" />
+                              <GripVertical size={16} className="text-gray-300 flex-shrink-0 hover:text-gray-500" />
+                              <FileText size={18} className="text-gray-400 flex-shrink-0" />
                               <div className="min-w-0 flex-1">
                                 <p className="font-medium text-gray-900 truncate text-sm">{doc.title}</p>
                                 <p className="text-xs text-gray-500">{doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : ''}{doc.file?.size ? ` • ${(doc.file.size / 1024).toFixed(0)} KB` : ''}</p>
@@ -404,6 +585,12 @@ export default function DocumentGalleryClient({ caseId, caseNumber, caseType, cl
                             <span className={`text-xs px-2 py-0.5 rounded-full ${doc.status === 'processed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{doc.status}</span>
                           </div>
                         ))}
+                      </div>
+                    )}
+                    {/* Drop zone indicator when category is empty but being dragged over */}
+                    {dragOverCategory === cat.key && docs.length === 0 && (
+                      <div className="px-5 py-4 text-center text-sm text-[#4b1d1d] bg-[#4b1d1d]/5 border-t border-dashed border-[#4b1d1d]/30">
+                        Drop document here
                       </div>
                     )}
                   </div>

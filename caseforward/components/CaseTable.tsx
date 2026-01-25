@@ -51,7 +51,7 @@ export default function CaseTable({
               >
                 <td className="px-6 py-4">
                   <Link
-                    href={`/app/case/${caseItem._id}`}
+                    href={`/app/case/${caseItem._id}/documents`}
                     className="text-gray-900 hover:text-[#4b1d1d] font-semibold"
                   >
                     {caseItem.title || caseItem.caseNumber}
@@ -59,7 +59,7 @@ export default function CaseTable({
                 </td>
                 <td className="px-6 py-4 text-gray-600">
                   <Link
-                    href={`/app/case/${caseItem._id}`}
+                    href={`/app/case/${caseItem._id}/documents`}
                     className="hover:text-[#4b1d1d]"
                   >
                     {`${caseItem.client.firstName} ${caseItem.client.lastName}`}
@@ -67,7 +67,7 @@ export default function CaseTable({
                 </td>
                 <td className="px-6 py-4">
                   <Link
-                    href={`/app/case/${caseItem._id}`}
+                    href={`/app/case/${caseItem._id}/documents`}
                     className="hover:text-[#4b1d1d]"
                   >
                     <StatusBadge status={caseItem.status} />
@@ -75,7 +75,7 @@ export default function CaseTable({
                 </td>
                 <td className="px-6 py-4 text-gray-600">
                   <Link
-                    href={`/app/case/${caseItem._id}`}
+                    href={`/app/case/${caseItem._id}/documents`}
                     className="hover:text-[#4b1d1d]"
                   >
                     {new Date(caseItem.createdAt).toLocaleDateString()}
@@ -84,7 +84,7 @@ export default function CaseTable({
                 {showActions && (
                   <td className="px-6 py-4 text-gray-600">
                     <Link
-                      href={`/app/case/${caseItem._id}`}
+                      href={`/app/case/${caseItem._id}/documents`}
                       className="text-[#4b1d1d] font-semibold hover:underline"
                     >
                       View Details
