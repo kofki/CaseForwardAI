@@ -1,8 +1,7 @@
-
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db/connect';
-import { Action, Feedback, AuditLog, Document, Case } from '@/lib/db/models';
+import { Action, Feedback, AuditLog, Case } from '@/lib/db/models';
 import {
   ActionStatus,
   RejectionReason,
@@ -14,10 +13,10 @@ import {
 interface ReviewRequest {
   approved: boolean;
   reviewedBy: string;
-
+  
   rejectionReason?: RejectionReason;
   feedback?: string;
-
+  
   modifiedContent?: any;
 }
 
@@ -31,11 +30,11 @@ interface ReviewResponse {
 }
 
 export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ReviewResponse>> {
   try {
-    const actionId = params.id;
+    const { id: actionId } = await params;
 
     if (!mongoose.Types.ObjectId.isValid(actionId)) {
       return NextResponse.json(
@@ -84,11 +83,19 @@ export async function POST(
         },
       });
 
+      // TODO: Execute the action
+      // const executionResult = await executeAction(action, modifiedContent);
+
+      // TODO: Log to Solana
+      // const auditHash = await logToSolana(action, reviewedBy);
+
       await Action.findByIdAndUpdate(actionId, {
         status: ActionStatus.EXECUTED,
         execution: {
           executedAt: new Date(),
           success: true,
+          // externalId: executionResult.externalId,
+          // auditHash,
         },
       });
 
@@ -117,6 +124,7 @@ export async function POST(
         actionId,
         status: ActionStatus.EXECUTED,
         message: 'Action approved and executed',
+        // auditHash,
       });
 
     } else {

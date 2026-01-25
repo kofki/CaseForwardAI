@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db/connect';
 import { Document, Case, AuditLog } from '@/lib/db/models';
@@ -23,11 +23,11 @@ interface AssignResponse {
 }
 
 export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<AssignResponse>> {
   try {
-    const documentId = params.id;
+    const { id: documentId } = await params;
 
     if (!mongoose.Types.ObjectId.isValid(documentId)) {
       return NextResponse.json(
@@ -58,8 +58,8 @@ export async function POST(
 
     if (doc.caseId) {
       return NextResponse.json(
-        {
-          success: false,
+        { 
+          success: false, 
           message: 'Document is already assigned to a case',
           caseId: doc.caseId.toString(),
         },
@@ -75,7 +75,7 @@ export async function POST(
       );
     }
 
-    const updatedDoc = await Document.findByIdAndUpdate(
+    await Document.findByIdAndUpdate(
       documentId,
       {
         caseId: new mongoose.Types.ObjectId(caseId),
@@ -105,6 +105,9 @@ export async function POST(
         clientName: `${caseDoc.client.firstName} ${caseDoc.client.lastName}`,
       },
     });
+
+    // TODO: Trigger Round Table analysis
+    // await triggerRoundTable(documentId, caseId);
 
     return NextResponse.json({
       success: true,

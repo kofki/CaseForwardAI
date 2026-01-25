@@ -1,15 +1,4 @@
-// lib/agents/types.ts
-// ============================================================================
-// AI Agent Types
-// ============================================================================
-// Shared types for the AI orchestration layer
-// ============================================================================
-
 import { AgentType } from '@/lib/db/types/enums';
-
-// ============================================================================
-// MESSAGE TYPES
-// ============================================================================
 
 export interface AgentMessage {
   role: 'system' | 'user' | 'assistant';
@@ -23,10 +12,6 @@ export interface AgentResponse {
   tokensUsed?: number;
   latencyMs?: number;
 }
-
-// ============================================================================
-// SPECIALIST TYPES
-// ============================================================================
 
 export interface SpecialistConfig {
   name: string;
@@ -51,22 +36,16 @@ export interface SpecialistOutput {
   flags?: string[];
 }
 
-// ============================================================================
-// TASK TYPES
-// ============================================================================
-
 export type TaskType = 
-  | 'document_analysis'      // Analyze a new document
-  | 'case_assignment'        // Suggest case for unassigned doc
-  | 'user_command'           // Process user instruction
-  | 'case_review'            // Periodic case review
-  | 'action_generation';     // Generate action recommendation
+  | 'document_analysis'     
+  | 'case_assignment'   
+  | 'user_command'   
+  | 'case_review'   
+  | 'action_generation'; 
 
 export interface TaskContext {
-  // What triggered this task
   taskType: TaskType;
   
-  // Case context (if known)
   caseId?: string;
   caseNumber?: string;
   clientName?: string;
@@ -74,17 +53,14 @@ export interface TaskContext {
   caseStatus?: string;
   caseSummary?: string;
   
-  // Document context (if applicable)
   documentId?: string;
   documentTitle?: string;
   documentCategory?: string;
   documentText?: string;
-  documentImages?: string[];  // Base64 or URLs
+  documentImages?: string[];
   
-  // User command (if applicable)
   userCommand?: string;
   
-  // Additional context
   recentActions?: string[];
   relatedDocuments?: Array<{
     title: string;
@@ -92,20 +68,15 @@ export interface TaskContext {
     summary?: string;
   }>;
   
-  // Conversation history (for multi-turn)
   conversationHistory?: AgentMessage[];
 }
 
-// ============================================================================
-// ROUND TABLE TYPES
-// ============================================================================
-
 export interface RoundTableConfig {
-  maxRounds: number;              // Max discussion iterations
-  consensusThreshold: number;     // Agreement level needed (0-1)
-  temperature: number;            // LLM temperature
-  requireAllAgents: boolean;      // All must respond?
-  timeoutMs: number;              // Max time per round
+  maxRounds: number;     
+  consensusThreshold: number;   
+  temperature: number;    
+  requireAllAgents: boolean; 
+  timeoutMs: number; 
 }
 
 export interface RoundTableSession {
@@ -133,27 +104,19 @@ export interface RoundTableConsensus {
   flags: string[];
   recommendations: string[];
   confidence: number;
-  dissent?: string[];  // Any disagreements
+  dissent?: string[];
 }
-
-// ============================================================================
-// ACTION TYPES
-// ============================================================================
 
 export interface SuggestedAction {
-  type: string;              // ActionType enum value
+  type: string;         
   title: string;
   description: string;
-  priority: number;          // 1-4 (critical to low)
-  confidence: number;        // 0-1
+  priority: number;   
+  confidence: number;  
   reasoning: string;
-  content: Record<string, any>;  // Type-specific content
+  content: Record<string, any>;
   suggestedBy: AgentType;
 }
-
-// ============================================================================
-// ORCHESTRATOR TYPES
-// ============================================================================
 
 export interface OrchestratorInput {
   taskType: TaskType;
@@ -173,10 +136,6 @@ export interface OrchestratorOutput {
   };
   errors?: string[];
 }
-
-// ============================================================================
-// LLM PROVIDER TYPES
-// ============================================================================
 
 export interface LLMProvider {
   name: string;
@@ -199,10 +158,6 @@ export interface LLMResponse {
   latencyMs: number;
   model: string;
 }
-
-// ============================================================================
-// DEFAULT CONFIGS
-// ============================================================================
 
 export const DEFAULT_ROUND_TABLE_CONFIG: RoundTableConfig = {
   maxRounds: 3,

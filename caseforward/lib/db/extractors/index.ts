@@ -39,12 +39,11 @@ export async function extractContent(
       return extractTextContent(buffer);
 
     default:
-      // Try to detect if it's a PDF by magic bytes
       if (isPdf(buffer)) {
         return extractPdfContent(buffer);
       }
       
-      // Unknown type - return minimal extraction
+
       return {
         text: '',
         textLength: 0,

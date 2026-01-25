@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document as MongoDocument } from 'mongoose';
+import mongoose, { Schema, Model, HydratedDocument } from 'mongoose';
 import {
   LienType,
   LienStatus,
@@ -14,10 +14,10 @@ export interface INegotiationHistory {
   negotiatedBy: string;
 }
 
-export interface ILien extends MongoDocument {
+export interface ILien {
   caseId: mongoose.Types.ObjectId;
   documentId?: mongoose.Types.ObjectId;
-
+  
   lienType: LienType;
   lienHolder: string;
   lienHolderContact?: {
@@ -27,30 +27,32 @@ export interface ILien extends MongoDocument {
     address?: string;
     fax?: string;
   };
-
+  
   claimNumber?: string;
   accountNumber?: string;
-
+  
   originalAmount: number;
   currentAmount: number;
   amountPaid: number;
   remainingBalance: number;
-
+  
   status: LienStatus;
-
+  
   filedDate?: Date;
   dueDate?: Date;
   releasedDate?: Date;
-
+  
   negotiationHistory: INegotiationHistory[];
-
+  
   notes?: string;
-
+  
   createdAt: Date;
   updatedAt: Date;
 }
 
-const NegotiationHistorySchema = new Schema<INegotiationHistory>(
+export type LienDocument = HydratedDocument<ILien>;
+
+const NegotiationHistorySchema = new Schema(
   {
     date: { type: Date, required: true },
     originalAmount: { type: Number, required: true },
@@ -61,7 +63,7 @@ const NegotiationHistorySchema = new Schema<INegotiationHistory>(
   { _id: false }
 );
 
-const LienSchema = new Schema<ILien>(
+const LienSchema = new Schema(
   {
     caseId: {
       type: Schema.Types.ObjectId,
@@ -148,13 +150,32 @@ const LienSchema = new Schema<ILien>(
   }
 );
 
-LienSchema.pre('save', function (next) {
-  this.remainingBalance = this.currentAmount - this.amountPaid;
-  next();
-});
-
 LienSchema.index({ caseId: 1, lienType: 1 });
 LienSchema.index({ caseId: 1, status: 1 });
 LienSchema.index({ status: 1, dueDate: 1 });
 
-export default mongoose.models.Lien || mongoose.model<ILien>('Lien', LienSchema);
+LienSchema.virtual('calculatedBalance').get(function () {
+  return this.currentAmount - this.amountPaid;
+});
+
+LienSchema.statics.createWithBalance = async function (data: Partial<ILien>) {
+  const remainingBalance = (data.currentAmount || 0) - (data.amountPaid || 0);
+  return this.create({ ...data, remainingBalance });
+};
+
+LienSchema.statics.updateAmounts = async function (
+  id: string,
+  currentAmount: number,
+  amountPaid: number
+) {
+  const remainingBalance = currentAmount - amountPaid;
+  return this.findByIdAndUpdate(
+    id,
+    { currentAmount, amountPaid, remainingBalance },
+    { new: true }
+  );
+};
+
+const Lien: Model<ILien> = mongoose.models.Lien || mongoose.model<ILien>('Lien', LienSchema);
+
+export default Lien;

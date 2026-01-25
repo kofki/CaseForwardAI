@@ -1,11 +1,3 @@
-// lib/agents/specialists/base.ts
-// ============================================================================
-// Base Specialist Class
-// ============================================================================
-// Abstract base for all AI specialists (Client Guru, Evidence Analyzer, etc.)
-// Specialists are stateless - all coordination happens through Round Table.
-// ============================================================================
-
 import { AgentType } from '@/lib/db/types/enums';
 import {
   SpecialistConfig,
@@ -26,30 +18,18 @@ export abstract class BaseSpecialist {
     this.llmProvider = llmProvider;
   }
 
-  /**
-   * Get the specialist's name
-   */
   get name(): string {
     return this.config.name;
   }
 
-  /**
-   * Get the specialist's agent type
-   */
   get agentType(): AgentType {
     return this.config.agentType;
   }
 
-  /**
-   * Get the specialist's description
-   */
   get description(): string {
     return this.config.description;
   }
 
-  /**
-   * Build the conversation messages for the LLM
-   */
   protected buildMessages(input: SpecialistInput): AgentMessage[] {
     const messages: AgentMessage[] = [
       {
@@ -58,14 +38,12 @@ export abstract class BaseSpecialist {
       },
     ];
 
-    // Add context about the task
     const contextMessage = this.buildContextMessage(input);
     messages.push({
       role: 'user',
       content: contextMessage,
     });
 
-    // Add previous responses from other agents (for round table discussion)
     if (input.previousResponses && input.previousResponses.length > 0) {
       const discussionContext = this.buildDiscussionContext(input.previousResponses);
       messages.push({
@@ -74,7 +52,6 @@ export abstract class BaseSpecialist {
       });
     }
 
-    // Add the specific task
     messages.push({
       role: 'user',
       content: `Task: ${input.task}`,
@@ -83,9 +60,6 @@ export abstract class BaseSpecialist {
     return messages;
   }
 
-  /**
-   * Build context message from TaskContext
-   */
   protected buildContextMessage(input: SpecialistInput): string {
     const ctx = input.context;
     const parts: string[] = [];
@@ -107,7 +81,6 @@ export abstract class BaseSpecialist {
       parts.push(`Title: ${ctx.documentTitle}`);
       if (ctx.documentCategory) parts.push(`Category: ${ctx.documentCategory}`);
       if (ctx.documentText) {
-        // Truncate if too long
         const text = ctx.documentText.length > 8000 
           ? ctx.documentText.substring(0, 8000) + '... [truncated]'
           : ctx.documentText;
@@ -137,9 +110,6 @@ export abstract class BaseSpecialist {
     return parts.join('\n');
   }
 
-  /**
-   * Build discussion context from previous agent responses
-   */
   protected buildDiscussionContext(responses: AgentResponse[]): string {
     const parts: string[] = ['## Discussion So Far'];
     
@@ -155,9 +125,6 @@ export abstract class BaseSpecialist {
     return parts.join('\n');
   }
 
-  /**
-   * Get human-readable agent label
-   */
   protected getAgentLabel(agent: AgentType): string {
     const labels: Record<AgentType, string> = {
       [AgentType.ORCHESTRATOR]: '🎯 Orchestrator',
@@ -168,10 +135,6 @@ export abstract class BaseSpecialist {
     return labels[agent] || agent;
   }
 
-  /**
-   * Process the LLM response into structured output
-   * Override in subclasses for specialized parsing
-   */
   protected processResponse(
     content: string,
     input: SpecialistInput,
@@ -189,9 +152,6 @@ export abstract class BaseSpecialist {
     };
   }
 
-  /**
-   * Execute the specialist's task
-   */
   async execute(input: SpecialistInput): Promise<SpecialistOutput> {
     const messages = this.buildMessages(input);
     
