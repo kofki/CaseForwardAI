@@ -42,6 +42,19 @@ export interface IAIMetadata {
   confidenceScore: number;
 }
 
+export interface IInsurance {
+  defendantPolicy?: {
+    carrier?: string;
+    claimNumber?: string;
+    policyLimit?: number;
+    adjuster?: {
+      name?: string;
+      email?: string;
+      phone?: string;
+    };
+  };
+}
+
 export interface ICase extends MongoDocument {
   caseNumber: string;
   fileNumber?: string;
@@ -53,7 +66,7 @@ export interface ICase extends MongoDocument {
 
   client: IClient;
   defendant?: string;
-  defendantInsurance?: string;
+  insurance?: IInsurance;
   attorney?: string;
   paralegal?: string;
 
@@ -171,7 +184,24 @@ const CaseSchema = new Schema<ICase>(
       required: [true, 'Client information is required'],
     },
     defendant: { type: String, trim: true },
-    defendantInsurance: { type: String, trim: true },
+
+    // Updated Insurance Structure
+    insurance: {
+      type: new Schema({
+        defendantPolicy: {
+          carrier: { type: String, trim: true },
+          claimNumber: { type: String, trim: true },
+          policyLimit: { type: Number },
+          adjuster: {
+            name: { type: String, trim: true },
+            email: { type: String, trim: true },
+            phone: { type: String, trim: true },
+          }
+        }
+      }, { _id: false }),
+      default: () => ({}),
+    },
+
     attorney: { type: String, trim: true },
     paralegal: { type: String, trim: true },
 
