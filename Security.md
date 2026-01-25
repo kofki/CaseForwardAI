@@ -1,4 +1,4 @@
-### Zero Trust Document Storage Architecture
+# Zero Trust Document Storage Architecture
 ---
 
 ```
@@ -46,7 +46,7 @@
 
 ---
 
-## Key Security Principles
+## 🛡️ Key Security Principles
 
 ### 1. Client-Side Object Key Ownership
 
