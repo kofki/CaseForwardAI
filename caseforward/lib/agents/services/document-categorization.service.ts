@@ -11,7 +11,7 @@
  * 5. Round Table analyzes for insights
  */
 
-import { generateObject } from 'ai';
+import { generateObject, generateText } from 'ai';
 import { z } from 'zod';
 import { getGeminiModel } from '../core/gemini';
 import {
@@ -76,13 +76,13 @@ const CategorizationSchema = z.object({
     'client_intake',
     'other',
   ]).describe('The document category based on content analysis'),
-  
+
   confidence: z.number().min(0).max(1).describe('Confidence score 0-1'),
-  
+
   subcategory: z.string().optional().describe('More specific subcategory if applicable'),
-  
+
   suggestedTitle: z.string().describe('A clear, descriptive title for this document'),
-  
+
   extractedEntities: z.object({
     patientName: z.string().optional().describe('Patient/client name if found'),
     providerName: z.string().optional().describe('Medical provider, facility, or company name'),
@@ -93,7 +93,7 @@ const CategorizationSchema = z.object({
     procedures: z.array(z.string()).optional().describe('Medical procedures or treatments'),
     caseReferences: z.array(z.string()).optional().describe('Case numbers, claim numbers, or references'),
   }),
-  
+
   reasoning: z.string().describe('Brief explanation of why this category was chosen'),
 });
 
@@ -161,8 +161,8 @@ export async function categorizeDocument(
   fileName?: string,
   mimeType?: string
 ): Promise<CategorizationResult> {
-  const model = getGeminiModel('gemini-2.5-flash');
-  
+  const model = getGeminiModel('gemma-3-27b-it');
+
   const userPrompt = `Analyze and categorize this document:
 
 **File Name:** ${fileName || 'Unknown'}
@@ -173,30 +173,33 @@ ${documentText.substring(0, 15000)}
 
 ${documentText.length > 15000 ? `\n[Content truncated - ${documentText.length} total characters]` : ''}
 
-Categorize this document and extract relevant information.`;
+Categorize this document and extract relevant information.
+Respond with a valid JSON object strictly matching the schema.`;
 
   try {
-    const result = await generateObject({
+    const { text } = await generateText({
       model,
-      schema: CategorizationSchema,
-      system: CATEGORIZATION_PROMPT,
-      prompt: userPrompt,
+      system: CATEGORIZATION_PROMPT + "\n\nCRITICAL: OUTPUT VALID JSON ONLY. NO MARKDOWN.",
+      prompt: userPrompt + "\n\nEnsure the output matches the CategorizationSchema structure precisely.",
     });
 
+    const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const result = JSON.parse(cleanedText);
+
     return {
-      category: result.object.category as DocumentCategory,
-      confidence: result.object.confidence,
-      subcategory: result.object.subcategory,
-      suggestedTitle: result.object.suggestedTitle,
-      extractedEntities: result.object.extractedEntities,
-      reasoning: result.object.reasoning,
+      category: result.category as DocumentCategory,
+      confidence: result.confidence,
+      subcategory: result.subcategory,
+      suggestedTitle: result.suggestedTitle,
+      extractedEntities: result.extractedEntities || {},
+      reasoning: result.reasoning,
     };
   } catch (error) {
     console.error('[Categorization] AI error:', error);
-    
+
     // Fallback: try to infer from filename
     const category = inferCategoryFromFileName(fileName || '');
-    
+
     return {
       category,
       confidence: 0.3,
@@ -219,23 +222,23 @@ export async function categorizeDocumentBatch(
   }>
 ): Promise<BatchCategorizationResult[]> {
   const results: BatchCategorizationResult[] = [];
-  
+
   for (const doc of documents) {
     const startTime = Date.now();
-    
+
     const result = await categorizeDocument(
       doc.text,
       doc.fileName,
       doc.mimeType
     );
-    
+
     results.push({
       documentId: doc.documentId,
       result,
       processingTimeMs: Date.now() - startTime,
     });
   }
-  
+
   return results;
 }
 
@@ -244,7 +247,7 @@ export async function categorizeDocumentBatch(
  */
 function inferCategoryFromFileName(fileName: string): DocumentCategory {
   const lowerName = fileName.toLowerCase();
-  
+
   // Medical
   if (lowerName.includes('medical') || lowerName.includes('record')) {
     return DocumentCategory.MEDICAL_RECORD;
@@ -258,7 +261,7 @@ function inferCategoryFromFileName(fileName: string): DocumentCategory {
   if (lowerName.includes('rx') || lowerName.includes('prescription') || lowerName.includes('pharmacy')) {
     return DocumentCategory.PHARMACY_RECORD;
   }
-  
+
   // Incident
   if (lowerName.includes('police') || lowerName.includes('accident report')) {
     return DocumentCategory.POLICE_REPORT;
@@ -269,7 +272,7 @@ function inferCategoryFromFileName(fileName: string): DocumentCategory {
   if (lowerName.includes('witness')) {
     return DocumentCategory.WITNESS_STATEMENT;
   }
-  
+
   // Financial
   if (lowerName.includes('pay') || lowerName.includes('stub') || lowerName.includes('wage')) {
     return DocumentCategory.PAY_STUB;
@@ -280,7 +283,7 @@ function inferCategoryFromFileName(fileName: string): DocumentCategory {
   if (lowerName.includes('tax') || lowerName.includes('w2') || lowerName.includes('1099')) {
     return DocumentCategory.TAX_DOCUMENT;
   }
-  
+
   // Insurance
   if (lowerName.includes('policy')) {
     return DocumentCategory.INSURANCE_POLICY;
@@ -291,7 +294,7 @@ function inferCategoryFromFileName(fileName: string): DocumentCategory {
   if (lowerName.includes('denial')) {
     return DocumentCategory.DENIAL_LETTER;
   }
-  
+
   // Legal
   if (lowerName.includes('retainer') || lowerName.includes('agreement')) {
     return DocumentCategory.RETAINER_AGREEMENT;
@@ -305,12 +308,12 @@ function inferCategoryFromFileName(fileName: string): DocumentCategory {
   if (lowerName.includes('court') || lowerName.includes('filing') || lowerName.includes('motion')) {
     return DocumentCategory.COURT_FILING;
   }
-  
+
   // Intake
   if (lowerName.includes('intake') || lowerName.includes('questionnaire')) {
     return DocumentCategory.CLIENT_INTAKE;
   }
-  
+
   return DocumentCategory.OTHER;
 }
 
@@ -353,6 +356,6 @@ export function getCategoryEmoji(category: DocumentCategory): string {
     [DocumentCategory.CLIENT_INTAKE]: '📝',
     [DocumentCategory.OTHER]: '📁',
   };
-  
+
   return emojiMap[category] || '📄';
 }

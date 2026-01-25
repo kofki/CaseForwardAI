@@ -8,6 +8,7 @@
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db/connect';
 import { getCaseById } from '@/lib/db/models/Case';
+import { Document } from '@/lib/db/models';
 
 // ============================================
 // TypeScript Interfaces for Agent Context
@@ -58,6 +59,7 @@ export interface CaseContextDocument {
     keyFindings: string[];
     flags: string[];
     uploadedAt: Date;
+    textContent?: string; // Extracted document text for AI search
 }
 
 export interface CaseContextLien {
@@ -134,25 +136,25 @@ export interface CaseContext {
 
 // Add these type definitions near the top of the file
 interface DocumentInfo {
-  name: string;
-  type: string;
-  [key: string]: any;
+    name: string;
+    type: string;
+    [key: string]: any;
 }
 
 interface LienInfo {
-  type: string;
-  lienholderName: string;
-  currentBalance: number;
-  priority: string;
-  status: string;
-  [key: string]: any;
+    type: string;
+    lienholderName: string;
+    currentBalance: number;
+    priority: string;
+    status: string;
+    [key: string]: any;
 }
 
 interface ActionInfo {
-  title: string;
-  status: string;
-  dueDate?: Date;
-  [key: string]: any;
+    title: string;
+    status: string;
+    dueDate?: Date;
+    [key: string]: any;
 }
 
 // ============================================
@@ -201,7 +203,7 @@ export async function fetchFullCaseContext(caseId: string): Promise<CaseContext>
     await connectDB();
 
     const caseData = await getCaseById(caseId);
-    
+
     if (!caseData) {
         throw new Error(`Case ${caseId} not found`);
     }
@@ -220,38 +222,60 @@ export async function fetchFullCaseContext(caseId: string): Promise<CaseContext>
         insuranceDocs: caseData.evidenceChecklist?.insuranceDocs ?? false,
     };
 
-    // Transform documents
-    const contextDocuments: CaseContextDocument[] = caseData.documents.map((doc: DocumentInfo) => ({
-        id: doc._id.toString(),
-        title: doc.title,
-        category: doc.category,
-        status: doc.status,
-        summary: doc.aiAnalysis?.summary,
-        keyFindings: doc.aiAnalysis?.keyFindings ?? [],
-        flags: doc.aiAnalysis?.flags ?? [],
-        uploadedAt: doc.uploadedAt,
+    // FETCH DOCUMENTS from the Document collection (not from Case)
+    let contextDocuments: CaseContextDocument[] = [];
+    try {
+        const docsFromDB = await Document.find({
+            caseId: new mongoose.Types.ObjectId(caseId)
+        }).lean();
+
+        contextDocuments = docsFromDB.map((doc: any) => ({
+            id: doc._id?.toString() || '',
+            title: doc.title || doc.file?.originalName || 'Untitled',
+            category: doc.category || 'other',
+            status: doc.status || 'unknown',
+            summary: doc.aiAnalysis?.summary || doc.extractedContent?.text?.substring(0, 500) || '',
+            keyFindings: doc.aiAnalysis?.keyFindings ?? [],
+            flags: doc.aiAnalysis?.flags ?? [],
+            uploadedAt: doc.uploadedAt || doc.createdAt || new Date(),
+            // Include extracted text content for AI to search
+            textContent: doc.extractedContent?.text || '',
+        }));
+    } catch (docError) {
+        console.warn('Error fetching documents for case context:', docError);
+        // Fall back to case.documents if available
+        contextDocuments = (caseData.documents || []).map((doc: DocumentInfo) => ({
+            id: doc._id?.toString() || '',
+            title: doc.title || 'Untitled',
+            category: doc.category || 'other',
+            status: doc.status || 'unknown',
+            summary: doc.aiAnalysis?.summary,
+            keyFindings: doc.aiAnalysis?.keyFindings ?? [],
+            flags: doc.aiAnalysis?.flags ?? [],
+            uploadedAt: doc.uploadedAt || new Date(),
+        }));
+    }
+
+    // Transform liens (safely handle undefined)
+    const contextLiens: CaseContextLien[] = (caseData.liens || []).map((lien: LienInfo) => ({
+        id: lien._id?.toString() || '',
+        type: lien.type || 'other',
+        status: lien.status || 'unknown',
+        priority: lien.priority || 0,
+        lienholderName: lien.lienholder?.name || 'Unknown',
+        originalClaimed: lien.amounts?.originalClaimed || 0,
+        currentBalance: lien.amounts?.currentBalance || 0,
+        negotiatedAmount: lien.amounts?.negotiatedAmount,
     }));
 
-    // Transform liens
-    const contextLiens: CaseContextLien[] = caseData.liens.map((lien: LienInfo) => ({
-        id: lien._id.toString(),
-        type: lien.type,
-        status: lien.status,
-        priority: lien.priority,
-        lienholderName: lien.lienholder.name,
-        originalClaimed: lien.amounts.originalClaimed,
-        currentBalance: lien.amounts.currentBalance,
-        negotiatedAmount: lien.amounts.negotiatedAmount,
-    }));
-
-    // Transform actions
-    const contextActions: CaseContextAction[] = caseData.recentActions.map((action: ActionInfo) => ({
-        id: action._id.toString(),
-        title: action.title,
-        actionType: action.actionType,
-        status: action.status,
-        priority: action.priority,
-        createdAt: action.createdAt as Date,
+    // Transform actions (safely handle undefined)
+    const contextActions: CaseContextAction[] = (caseData.recentActions || []).map((action: ActionInfo) => ({
+        id: action._id?.toString() || '',
+        title: action.title || 'Untitled',
+        actionType: action.actionType || 'general',
+        status: action.status || 'pending',
+        priority: action.priority || 0,
+        createdAt: action.createdAt as Date || new Date(),
         roundTableConsensus: action.aiAnalysis?.roundTable?.consensus,
     }));
 
@@ -267,25 +291,28 @@ export async function fetchFullCaseContext(caseId: string): Promise<CaseContext>
     // Assemble full context
     const context: CaseContext = {
         caseId: caseData._id.toString(),
-        caseNumber: caseData.caseNumber,
-        caseType: caseData.caseType,
-        status: caseData.status,
+        caseNumber: caseData.caseNumber || 'Unknown',
+        caseType: caseData.caseType || 'other',
+        status: caseData.status || 'unknown',
 
         client: {
-            name: caseData.client.name,
-            email: caseData.client.email,
-            phone: caseData.client.phone,
-            address: caseData.client.address,
+            name: caseData.client?.name ||
+                (caseData.client?.firstName && caseData.client?.lastName
+                    ? `${caseData.client.firstName} ${caseData.client.lastName}`
+                    : 'Unknown Client'),
+            email: caseData.client?.email || '',
+            phone: caseData.client?.phone || '',
+            address: caseData.client?.address || '',
         },
 
         team: {
-            leadAttorney: caseData.team.leadAttorney,
-            paralegal: caseData.team.paralegal,
-            caseManager: caseData.team.caseManager,
+            leadAttorney: caseData.team?.leadAttorney || caseData.attorney || 'Unassigned',
+            paralegal: caseData.team?.paralegal || caseData.paralegal,
+            caseManager: caseData.team?.caseManager,
         },
 
         insurance: {
-            defendantCarrier: caseData.insurance?.defendantPolicy?.carrier ?? 'Unknown',
+            defendantCarrier: caseData.insurance?.defendantPolicy?.carrier ?? caseData.defendantInsurance ?? 'Unknown',
             claimNumber: caseData.insurance?.defendantPolicy?.claimNumber ?? '',
             policyLimit: caseData.insurance?.defendantPolicy?.policyLimit,
             adjusterName: caseData.insurance?.defendantPolicy?.adjuster?.name ?? '',
@@ -294,10 +321,10 @@ export async function fetchFullCaseContext(caseId: string): Promise<CaseContext>
         },
 
         incident: {
-            date: caseData.incident.date,
-            location: incidentLocation,
-            description: caseData.incident.description,
-            policeReportNumber: caseData.incident.policeReportNumber,
+            date: caseData.incident?.date || caseData.incidentDate || new Date(),
+            location: incidentLocation || caseData.incidentLocation || 'Unknown',
+            description: caseData.incident?.description || caseData.incidentDescription || '',
+            policeReportNumber: caseData.incident?.policeReportNumber,
         },
 
         financials: {
@@ -316,9 +343,9 @@ export async function fetchFullCaseContext(caseId: string): Promise<CaseContext>
         liens: contextLiens,
         recentActions: contextActions,
 
-        aiFlags: caseData.aiMetadata?.flags ?? [],
-        daysUntilSOL: calculateDaysUntilSOL(caseData.dates?.statuteOfLimitations),
-        lastAnalyzedAt: caseData.aiMetadata?.lastAnalyzedAt,
+        aiFlags: caseData.aiMetadata?.flags ?? caseData.aiMetadata?.riskFlags ?? [],
+        daysUntilSOL: calculateDaysUntilSOL(caseData.dates?.statuteOfLimitations || caseData.statuteOfLimitationsDate),
+        lastAnalyzedAt: caseData.aiMetadata?.lastAnalyzedAt || caseData.aiMetadata?.lastProcessedAt,
     };
 
     return context;

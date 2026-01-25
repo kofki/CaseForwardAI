@@ -383,14 +383,14 @@ const DocumentSchema = new Schema<IDocument>(
 
 // Compound indexes for common queries
 DocumentSchema.index({ caseId: 1, category: 1 });
-DocumentSchema.index({ caseId: 1, status: 1 });
+// // DocumentSchema.index({ caseId: 1, status: 1 }); // Removed to prevent duplicate index warning // Removed to prevent duplicate index warning
 DocumentSchema.index({ status: 1, createdAt: -1 });
 DocumentSchema.index({ 'aiAnalysis.isProcessed': 1, status: 1 });
 DocumentSchema.index({ 'file.hash': 1 }, { unique: true });
 
 // For finding unassigned documents
-DocumentSchema.index({ caseId: 1, status: 1 }, { 
-  partialFilterExpression: { caseId: null } 
+DocumentSchema.index({ caseId: 1, status: 1 }, {
+  partialFilterExpression: { caseId: null }
 });
 
 // Text search

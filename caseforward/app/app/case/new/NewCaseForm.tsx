@@ -37,7 +37,7 @@ interface QueuedDocument {
 export default function NewCaseForm() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [formData, setFormData] = useState<FormData>({
     caseNumber: '',
     incidentDate: '',
@@ -50,12 +50,12 @@ export default function NewCaseForm() {
     priority: 'medium',
     assignTo: 'AI Orchestrator',
   });
-  
+
   const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [uploadProgress, setUploadProgress] = useState<string[]>([]);
-  
+
   // New state for document queue
   const [createdCaseId, setCreatedCaseId] = useState<string>('');
   const [batchId, setBatchId] = useState<string>('');
@@ -85,7 +85,7 @@ export default function NewCaseForm() {
     try {
       // Step 1: Create the case
       setUploadProgress(prev => [...prev, '📋 Creating case...']);
-      
+
       const caseRes = await fetch('/api/cases', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -104,7 +104,7 @@ export default function NewCaseForm() {
       });
 
       const caseData = await caseRes.json();
-      
+
       if (!caseRes.ok) {
         throw new Error(caseData.message || 'Failed to create case');
       }
@@ -115,7 +115,7 @@ export default function NewCaseForm() {
       // Step 2: Batch upload files if any
       if (files.length > 0) {
         setUploadProgress(prev => [...prev, `📤 Uploading ${files.length} file(s)...`]);
-        
+
         const formDataUpload = new FormData();
         files.forEach(file => {
           formDataUpload.append('files', file);
@@ -129,15 +129,15 @@ export default function NewCaseForm() {
         });
 
         const batchData = await batchRes.json();
-        
+
         if (batchRes.ok && batchData.success) {
           setBatchId(batchData.batchId);
           setUploadProgress(prev => [...prev, `✅ Uploaded ${batchData.processed} file(s)`]);
-          
+
           if (batchData.failed > 0) {
             setUploadProgress(prev => [...prev, `⚠️ ${batchData.failed} file(s) failed to upload`]);
           }
-          
+
           // Convert batch files to queue format
           const queueDocs: QueuedDocument[] = batchData.files
             .filter((f: any) => f.status === 'queued')
@@ -148,7 +148,7 @@ export default function NewCaseForm() {
               mimeType: f.mimeType,
               size: f.size,
             }));
-          
+
           if (queueDocs.length > 0) {
             setQueuedDocuments(queueDocs);
             setShowQueue(true);
@@ -157,7 +157,7 @@ export default function NewCaseForm() {
             // No documents to process, redirect
             setUploadProgress(prev => [...prev, '🎉 Case setup complete!']);
             setTimeout(() => {
-              router.push(`/app/case/${caseData.caseId}`);
+              router.push(`/app/case/${caseData.caseId}/documents`);
             }, 1500);
           }
         } else {
@@ -181,11 +181,11 @@ export default function NewCaseForm() {
   const handleQueueComplete = () => {
     setUploadProgress(prev => [...prev, '🎉 All documents processed!']);
     setIsSubmitting(false);
-    
+
     // Redirect after a short delay
     setTimeout(() => {
       if (createdCaseId) {
-        router.push(`/app/case/${createdCaseId}`);
+        router.push(`/app/case/${createdCaseId}/documents`);
       }
     }, 2000);
   };
@@ -324,7 +324,7 @@ export default function NewCaseForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <label className="space-y-2">
                     <span className="text-sm font-semibold text-[#4b1d1d]">Case Type</span>
-                    <select 
+                    <select
                       name="caseType"
                       value={formData.caseType}
                       onChange={handleInputChange}
@@ -342,7 +342,7 @@ export default function NewCaseForm() {
                   </label>
                   <label className="space-y-2">
                     <span className="text-sm font-semibold text-[#4b1d1d]">Priority</span>
-                    <select 
+                    <select
                       name="priority"
                       value={formData.priority}
                       onChange={handleInputChange}
@@ -392,7 +392,7 @@ export default function NewCaseForm() {
                   <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#d7cfc3] bg-[#f7f1eb] rounded-none px-4 py-8 text-center cursor-pointer hover:border-[#f0a56b] transition-colors">
                     <span className="text-3xl">📁</span>
                     <span className="text-sm font-semibold text-[#4b1d1d]">
-                      {files.length > 0 
+                      {files.length > 0
                         ? `${files.length} file(s) selected`
                         : 'Drop files here or click to browse'
                       }
@@ -400,16 +400,16 @@ export default function NewCaseForm() {
                     <span className="text-xs text-gray-600">
                       PDF, TXT, PNG, JPG, RTF, CSV, MD, HTML — up to 50 MB each
                     </span>
-                    <input 
+                    <input
                       ref={fileInputRef}
-                      type="file" 
-                      className="hidden" 
-                      multiple 
+                      type="file"
+                      className="hidden"
+                      multiple
                       accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.text,.md,.markdown,.csv,.html,.htm,.rtf,.doc,.docx"
                       onChange={handleFileChange}
                     />
                   </label>
-                  
+
                   {/* File list with remove option */}
                   {files.length > 0 && (
                     <div className="space-y-2">
@@ -461,7 +461,7 @@ export default function NewCaseForm() {
                   </div>
                   <span className="text-2xl">{showChannelPull ? '▲' : '▼'}</span>
                 </button>
-                
+
                 {showChannelPull && (
                   <div className="p-5 space-y-3">
                     <p className="text-sm text-gray-500">
@@ -491,7 +491,7 @@ export default function NewCaseForm() {
                         className="w-full rounded-none border border-[#d7cfc3] bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#f0a56b]"
                       />
                     </label>
-                    <button 
+                    <button
                       type="button"
                       className="w-full px-4 py-3 mt-1 rounded-none bg-gray-200 text-gray-600 font-semibold cursor-not-allowed"
                       disabled
