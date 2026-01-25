@@ -8,7 +8,6 @@
 ![MongoDB](https://img.shields.io/badge/MongoDB-6-green)
 ![Gemini](https://img.shields.io/badge/Gemini-2.5-orange)
 ![Cloudflare](https://img.shields.io/badge/Cloudflare-R2-orange)
-![Solana](https://img.shields.io/badge/Solana-Devnet-purple)
 ![Auth0](https://img.shields.io/badge/Auth0-Authentication-red)
 ![Tailwind](https://img.shields.io/badge/Tailwind-CSS-cyan)
 
