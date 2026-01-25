@@ -6,21 +6,43 @@ export async function extractPdfContent(
   pdfBuffer: Buffer | ArrayBuffer
 ): Promise<IExtractedContent> {
   const startTime = Date.now();
-  
+
   try {
-    const pdfParseModule = await import('pdf-parse');
-    const pdfParse = (pdfParseModule as any).default ?? (pdfParseModule as any);
-    
-    const buffer = pdfBuffer instanceof ArrayBuffer 
-      ? Buffer.from(pdfBuffer) 
+    const buffer = pdfBuffer instanceof ArrayBuffer
+      ? Buffer.from(pdfBuffer)
       : pdfBuffer;
-    
+
+    // Use require for pdf-parse to avoid ESM/CJS interop issues in Next.js
+    let pdfParse;
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      pdfParse = require('pdf-parse');
+    } catch (e) {
+      console.warn('Standard pdf-parse require failed', e);
+    }
+
+    if (!pdfParse) {
+      throw new Error('Could not load pdf-parse library');
+    }
+
+    if (typeof pdfParse !== 'function') {
+      if (typeof (pdfParse as any).default === 'function') {
+        pdfParse = (pdfParse as any).default;
+      }
+    }
+
+    if (typeof pdfParse !== 'function') {
+      console.error('pdf-parse module structure:', pdfParse);
+      throw new Error(`pdf-parse library is not a function. Type: ${typeof pdfParse}`);
+    }
+
     const data = await pdfParse(buffer);
-    
+
     const extractedContent: IExtractedContent = {
       text: data.text || '',
       textLength: data.text?.length || 0,
-      images: [], 
+      images: [],
       pageCount: data.numpages || 0,
       hasImages: false,
       extractedAt: new Date(),
@@ -54,15 +76,15 @@ export async function extractPdfImages(
 }
 
 export function isPdf(buffer: Buffer | ArrayBuffer): boolean {
-  const bytes = buffer instanceof ArrayBuffer 
-    ? new Uint8Array(buffer) 
+  const bytes = buffer instanceof ArrayBuffer
+    ? new Uint8Array(buffer)
     : buffer;
-  
+
   return (
-    bytes[0] === 0x25 && 
-    bytes[1] === 0x50 && 
-    bytes[2] === 0x44 && 
-    bytes[3] === 0x46    
+    bytes[0] === 0x25 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x44 &&
+    bytes[3] === 0x46
   );
 }
 
@@ -75,23 +97,31 @@ export async function getPdfMetadata(
   creationDate?: Date;
 }> {
   try {
-    const pdfParseModule = await import('pdf-parse');
-    const pdfParse = (pdfParseModule as any).default ?? (pdfParseModule as any);
-    
-    const buffer = pdfBuffer instanceof ArrayBuffer 
-      ? Buffer.from(pdfBuffer) 
+    // Use require for pdf-parse to avoid ESM/CJS interop issues in Next.js
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    let pdfParse = require('pdf-parse');
+
+    // Handle various module formats
+    if (typeof pdfParse !== 'function') {
+      if (typeof (pdfParse as any).default === 'function') {
+        pdfParse = (pdfParse as any).default;
+      }
+    }
+
+    const buffer = pdfBuffer instanceof ArrayBuffer
+      ? Buffer.from(pdfBuffer)
       : pdfBuffer;
-    
+
     const data = await pdfParse(buffer, {
-      max: 1, 
+      max: 1,
     });
-    
+
     return {
       pageCount: data.numpages || 0,
       title: data.info?.Title,
       author: data.info?.Author,
-      creationDate: data.info?.CreationDate 
-        ? new Date(data.info.CreationDate) 
+      creationDate: data.info?.CreationDate
+        ? new Date(data.info.CreationDate)
         : undefined,
     };
   } catch (error) {

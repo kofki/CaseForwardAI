@@ -27,7 +27,7 @@ Output your analysis of the evidentiary state of the case.
 `;
 
     const { text } = await generateText({
-      model: getGeminiModel('gemini-2.5-flash-lite'),
+      model: getGeminiModel('gemma-3-12b-it'),
       prompt: prompt,
     });
 

@@ -144,11 +144,11 @@ export class RoundTableV2 {
     // Phase 2: Deliberation (Challenge/Respond)
     // ========================================
     let allMessages = [...openingRound.messages];
-    
+
     for (let i = 1; i < this.config.maxRounds; i++) {
       // Check for early consensus
       const consensus = await this.analyzeConsensus(allMessages, caseContext);
-      
+
       if (consensus.hasConsensus && consensus.agreementLevel >= this.config.consensusThreshold) {
         console.log(`[RoundTable] Early consensus reached (${(consensus.agreementLevel * 100).toFixed(0)}%)`);
         this.session.consensus = consensus;
@@ -215,7 +215,7 @@ export class RoundTableV2 {
     };
 
     // Build enhanced input with document context if available
-    const enhancedInput = context?.documentText 
+    const enhancedInput = context?.documentText
       ? `${trigger}\n\n--- Document Content ---\n${context.documentText.substring(0, 5000)}`
       : trigger;
 
@@ -316,12 +316,11 @@ export class RoundTableV2 {
       .map(m => `[${m.role}]: ${m.content}`)
       .join('\n\n');
 
-    const result = await generateObject({
-      model: getGeminiModel('gemini-2.5-flash'),
-      schema: ConsensusSchema,
+    const result = await generateText({
+      model: getGeminiModel('gemma-3-27b-it'),
+      system: `You are analyzing a discussion between legal AI specialists about Case #${caseContext.caseNumber}.
+Respond with a valid JSON object containing: hasConsensus (boolean), agreementLevel (number 0-1), sharedConclusions (string[]), points_of_contention (string[]), dissent (string[]), recommendedAction (string).`,
       prompt: `
-You are analyzing a discussion between legal AI specialists about Case #${caseContext.caseNumber}.
-
 TRANSCRIPT:
 ${transcript}
 
@@ -333,11 +332,17 @@ Analyze the discussion and determine:
 5. Are there any strong dissenting opinions? (dissent)
 6. What action should be taken based on the majority view? (recommendedAction)
 
-Be objective and specific.
+Be objective and specific. Output strictly valid JSON.
       `,
     });
 
-    return result.object as ConsensusAnalysis;
+    try {
+      const cleaned = result.text.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(cleaned) as ConsensusAnalysis;
+    } catch (e) {
+      console.error('Consensus JSON parse error', e);
+      return { hasConsensus: false, agreementLevel: 0, sharedConclusions: [], points_of_contention: [], dissent: [], recommendedAction: 'Analysis failed' };
+    }
   }
 
   /**
@@ -363,12 +368,11 @@ CONSENSUS ANALYSIS:
       `
       : '';
 
-    const result = await generateObject({
-      model: getGeminiModel('gemini-2.5-flash'),
-      schema: ActionCardSchema,
+    const result = await generateText({
+      model: getGeminiModel('gemma-3-27b-it'),
+      system: `You are the Orchestrator synthesizing a Round Table discussion into a single actionable recommendation.
+Respond with a valid JSON object matching the detailed Action Card structure.`,
       prompt: `
-You are the Orchestrator synthesizing a Round Table discussion into a single actionable recommendation.
-
 CASE: ${caseContext.caseNumber} | Client: ${caseContext.client.name} | Type: ${caseContext.caseType}
 
 DISCUSSION TRANSCRIPT:
@@ -376,21 +380,25 @@ ${transcript}
 
 ${consensusSummary}
 
-Generate ONE Action Card that represents the team's recommendation:
+Generate ONE Action Card that represents the team's recommendation.
+Output strictly JSON with keys: title, description, type (DRAFT_EMAIL/RISK_FLAG/SETTLEMENT_OFFER/MISSING_DOCS/GENERAL), emailBody (optional), missingDocuments (optional array), riskDetails (optional), confidence (0-1), reasoning, metadata (object).
 
 RULES:
-1. The title should be a clear action (e.g., "Request Missing Hospital Records", "Send Settlement Update to Client")
-2. If Client Guru drafted an email, include it in metadata.emailBody
-3. If Evidence Analyzer flagged risks, mention them in reasoning
-4. If Settlement Valuator gave figures, include key numbers in reasoning
-5. Confidence should reflect the consensus level
-6. Type should match the primary action being recommended
-
-Address the client by name (${caseContext.client.name}) in any drafted communications.
+1. The title should be a clear action (e.g., "Request Missing Hospital Records")
+2. If Client Guru drafted an email, include it in emailBody
+3. Address the client by name (${caseContext.client.name}) in drafted communications.
       `,
     });
 
-    const obj = result.object;
+    let obj: any;
+    try {
+      const cleaned = result.text.replace(/```json/g, '').replace(/```/g, '').trim();
+      obj = JSON.parse(cleaned);
+    } catch (e) {
+      console.error('Action Card JSON parse error', e);
+      // Fallback object
+      obj = { title: 'Analysis Error', description: 'Could not generate card', type: 'GENERAL', confidence: 0, reasoning: 'JSON Error' };
+    }
 
     return {
       id: randomUUID(),
@@ -398,6 +406,9 @@ Address the client by name (${caseContext.client.name}) in any drafted communica
       description: obj.description,
       type: obj.type,
       metadata: {
+        emailBody: obj.emailBody,
+        missingDocuments: obj.missingDocuments,
+        riskDetails: obj.riskDetails,
         ...obj.metadata,
         sessionId: this.session?.sessionId,
         roundsCompleted: this.session?.rounds.length,

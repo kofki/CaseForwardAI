@@ -12,6 +12,7 @@ import {
 } from '@/lib/db/types/enums';
 import { uploadToR2, computeFileHash } from '@/lib/storage/r2';
 import { extractContent, isSupportedMimeType } from '@/lib/db/extractors';
+import { categorizeDocument } from '@/lib/agents/services/document-categorization.service';
 
 interface IntakeResponse {
   success: boolean;
@@ -25,6 +26,12 @@ interface IntakeResponse {
     confidence: number;
     matchReasons: string[];
   }>;
+  aiCategorization?: {
+    suggestedCategory: string;
+    confidence: number;
+    suggestedTitle?: string;
+    reasoning?: string;
+  };
 }
 
 export async function POST(req: Request): Promise<NextResponse<IntakeResponse>> {
@@ -163,10 +170,65 @@ export async function POST(req: Request): Promise<NextResponse<IntakeResponse>> 
         },
       });
 
+      // AI Document Categorization (suggestion only - user can override)
+      try {
+        const categorizationResult = await categorizeDocument(
+          extractedContent.text || '',
+          file.name,
+          file.type
+        );
+
+        // Update document with AI-suggested category (stored in aiAnalysis)
+        await Document.findByIdAndUpdate(doc._id, {
+          // Only update category if user didn't specify one
+          ...(category ? {} : { category: categorizationResult.category }),
+          'aiAnalysis.suggestedCategory': categorizationResult.category,
+          'aiAnalysis.categoryConfidence': categorizationResult.confidence,
+          'aiAnalysis.suggestedTitle': categorizationResult.suggestedTitle,
+          'aiAnalysis.categoryReasoning': categorizationResult.reasoning,
+          'aiAnalysis.extractedEntities': categorizationResult.extractedEntities,
+        });
+
+        await AuditLog.create({
+          eventType: AuditEventType.DOCUMENT_ANALYZED,
+          severity: SeverityLevel.INFO,
+          agentType: AgentType.EVIDENCE_ANALYZER,
+          agentId: 'categorizer',
+          documentId: doc._id,
+          caseId: caseId ? new mongoose.Types.ObjectId(caseId) : undefined,
+          message: `AI categorized as ${categorizationResult.category} (${Math.round(categorizationResult.confidence * 100)}% confidence)`,
+          success: true,
+          details: {
+            category: categorizationResult.category,
+            confidence: categorizationResult.confidence,
+            reasoning: categorizationResult.reasoning,
+          },
+        });
+      } catch (categorizationError) {
+        console.warn('AI categorization failed, using default:', categorizationError);
+        // Non-blocking - document upload continues even if categorization fails
+      }
+
       if (caseId) {
         await Case.findByIdAndUpdate(caseId, {
           $inc: { documentCount: 1 },
         });
+
+        // Trigger document analysis for case-assigned documents
+        try {
+          if (extractedContent.text && extractedContent.textLength > 0) {
+            const { analyzeDocument } = await import('@/lib/agents/document-analysis.service');
+            await analyzeDocument({
+              documentId: doc._id.toString(),
+              caseId: caseId,
+              extractedText: extractedContent.text,
+            });
+            console.log(`[Intake] Document ${doc._id} analysis completed`);
+          }
+        } catch (analysisError) {
+          console.warn('[Intake] Document analysis failed, document will remain in processing:', analysisError);
+          // Non-blocking - document upload continues even if analysis fails
+        }
       }
 
     } catch (extractError) {

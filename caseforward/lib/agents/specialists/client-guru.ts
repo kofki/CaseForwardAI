@@ -27,7 +27,7 @@ Output your thoughts on what we should communicate to the client and why.
 `;
 
     const { text } = await generateText({
-      model: getGeminiModel('gemini-2.5-flash-lite'),
+      model: getGeminiModel('gemma-3-12b-it'),
       prompt: prompt,
     });
 

@@ -25,7 +25,15 @@ export async function runOrchestrator(
   const result = await roundTable.discussWithCase(caseId, userInput);
 
   return {
-    actionCard: result.card,
+    actionCard: result.card || {
+      id: "default-no-action",
+      originator: "ORCHESTRATOR",
+      title: "No Action Recommended",
+      description: "Based on the analysis, no specific action is required at this time.",
+      type: "GENERAL",
+      confidence: 0,
+      reasoning: "No actionable insights were generated from the discussion."
+    },
     discussionHistory: result.history,
     caseContext: result.caseContext
   };

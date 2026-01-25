@@ -103,7 +103,7 @@ OUTPUT FORMAT (be precise with the ACTUAL numbers):
 `;
 
         const { text } = await generateText({
-            model: getGeminiModel('gemini-2.5-flash-lite'),
+            model: getGeminiModel('gemma-3-12b-it'),
             prompt: prompt,
         });
 

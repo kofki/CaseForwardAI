@@ -273,6 +273,18 @@ export async function getCaseById(id: string | mongoose.Types.ObjectId) {
   return CaseModel.findById(id).exec();
 }
 
+export async function getCaseByCaseNumber(caseNumber: string) {
+  return CaseModel.findOne({ caseNumber }).exec();
+}
+
+export async function getAllCases(limit?: number) {
+  const query = CaseModel.find().sort({ createdAt: -1 });
+  if (limit) {
+    query.limit(limit);
+  }
+  return query.exec();
+}
+
 export async function getCases(filter?: Record<string, unknown>) {
   // Ensure filter is always a plain object; ignore strings/other types
   const safeFilter =

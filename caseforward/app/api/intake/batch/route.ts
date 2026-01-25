@@ -197,23 +197,28 @@ export async function POST(req: Request): Promise<NextResponse<BatchIntakeRespon
 
         const doc = await Document.create(documentData);
 
-        // Log upload
-        await AuditLog.create({
-          eventType: AuditEventType.DOCUMENT_UPLOADED,
-          severity: SeverityLevel.INFO,
-          agentType: AgentType.SYSTEM,
-          agentId: uploadedBy,
-          documentId: doc._id,
-          caseId: caseId ? new mongoose.Types.ObjectId(caseId) : undefined,
-          message: `Batch upload: ${fileName}`,
-          success: true,
-          details: {
-            batchId,
-            fileName,
-            fileSize: file.size,
-            mimeType,
-          },
-        });
+        // Log upload (non-blocking - don't fail upload if logging fails)
+        try {
+          await AuditLog.create({
+            eventType: AuditEventType.DOCUMENT_UPLOADED,
+            severity: SeverityLevel.INFO,
+            agentType: AgentType.SYSTEM,
+            agentId: uploadedBy,
+            documentId: doc._id,
+            caseId: caseId ? new mongoose.Types.ObjectId(caseId) : undefined,
+            message: `Batch upload: ${fileName}`,
+            success: true,
+            details: {
+              batchId,
+              fileName,
+              fileSize: file.size,
+              mimeType,
+            },
+          });
+        } catch (auditError) {
+          console.warn(`Audit log failed for upload ${fileName}:`, auditError);
+          // Continue processing - don't block on audit logging
+        }
 
         // Extract content
         try {
@@ -229,22 +234,28 @@ export async function POST(req: Request): Promise<NextResponse<BatchIntakeRespon
             'metadata.pageCount': extractedContent.pageCount,
           });
 
-          await AuditLog.create({
-            eventType: AuditEventType.DOCUMENT_EXTRACTED,
-            severity: SeverityLevel.INFO,
-            agentType: AgentType.SYSTEM,
-            agentId: 'extractor',
-            documentId: doc._id,
-            caseId: caseId ? new mongoose.Types.ObjectId(caseId) : undefined,
-            message: `Content extracted: ${extractedContent.textLength} chars`,
-            success: true,
-            details: {
-              batchId,
-              textLength: extractedContent.textLength,
-              pageCount: extractedContent.pageCount,
-              extractionMethod: extractedContent.extractionMethod,
-            },
-          });
+          // Log extraction (non-blocking)
+          try {
+            await AuditLog.create({
+              eventType: AuditEventType.DOCUMENT_EXTRACTED,
+              severity: SeverityLevel.INFO,
+              agentType: AgentType.SYSTEM,
+              agentId: 'extractor',
+              documentId: doc._id,
+              caseId: caseId ? new mongoose.Types.ObjectId(caseId) : undefined,
+              message: `Content extracted: ${extractedContent.textLength} chars`,
+              success: true,
+              details: {
+                batchId,
+                textLength: extractedContent.textLength,
+                pageCount: extractedContent.pageCount,
+                extractionMethod: extractedContent.extractionMethod,
+              },
+            });
+          } catch (auditError) {
+            console.warn(`Audit log failed for extraction ${fileName}:`, auditError);
+            // Continue processing
+          }
 
           results.push({
             documentId: doc._id.toString(),
@@ -276,12 +287,14 @@ export async function POST(req: Request): Promise<NextResponse<BatchIntakeRespon
         }
 
       } catch (fileError) {
-        console.error(`Error processing ${fileName}:`, fileError);
+        const errorMsg = fileError instanceof Error ? fileError.message : 'Processing failed';
+        console.error(`Error processing ${fileName}:`, errorMsg);
+        console.error('Full error:', fileError);
         results.push({
           documentId: '',
           fileName,
           status: 'failed',
-          error: fileError instanceof Error ? fileError.message : 'Processing failed',
+          error: errorMsg,
           mimeType: file.type || 'unknown',
           size: file.size,
         });

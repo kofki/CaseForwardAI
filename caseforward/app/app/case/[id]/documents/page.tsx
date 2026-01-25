@@ -24,7 +24,7 @@ async function getDocumentsForCase(caseId: string) {
 
 export default async function CaseDocumentsPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth0.getSession();
-  
+
   if (!session) {
     redirect('/auth/login');
   }
@@ -47,8 +47,9 @@ export default async function CaseDocumentsPage({ params }: { params: Promise<{ 
   }
 
   const documents = await getDocumentsForCase(id);
-  
+
   // Serialize documents for client component
+  // IMPORTANT: Truncate text content to prevent stack overflow during serialization
   const serializedDocs = documents.map((doc: any) => ({
     _id: doc._id.toString(),
     title: doc.title || doc.file?.originalName || 'Untitled',
@@ -62,7 +63,8 @@ export default async function CaseDocumentsPage({ params }: { params: Promise<{ 
     },
     uploadedAt: doc.uploadedAt?.toISOString(),
     extractedContent: {
-      text: doc.extractedContent?.text || '',
+      // Truncate text to 500 chars for preview - full text stays on server
+      text: (doc.extractedContent?.text || '').substring(0, 500),
       pageCount: doc.extractedContent?.pageCount || 0,
     },
     aiAnalysis: {
@@ -72,7 +74,7 @@ export default async function CaseDocumentsPage({ params }: { params: Promise<{ 
   }));
 
   return (
-    <DocumentGalleryClient 
+    <DocumentGalleryClient
       caseId={id}
       caseNumber={caseData.caseNumber}
       caseType={caseData.caseType}

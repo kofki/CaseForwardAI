@@ -64,39 +64,35 @@ export default function Sidebar({
       <nav className="space-y-4 flex-1">
         <Link
           href="/app"
-          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl ${
-            activePage === "dashboard" ? "bg-white/20" : "hover:bg-white/10"
-          }`}
+          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl ${activePage === "dashboard" ? "bg-white/20" : "hover:bg-white/10"
+            }`}
         >
           <LayoutDashboard size={28} className="flex-shrink-0" />
           <span>Dashboard</span>
         </Link>
         <Link
           href="/app/cases"
-          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl ${
-            activePage === "cases" ? "bg-white/20" : "hover:bg-white/10"
-          }`}
+          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl ${activePage === "cases" ? "bg-white/20" : "hover:bg-white/10"
+            }`}
         >
           <FileText size={28} className="flex-shrink-0" />
           <span>Cases</span>
         </Link>
         <a
           href="#"
-          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl ${
-            activePage === "actions" ? "bg-white/20" : "hover:bg-white/10"
-          }`}
+          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl ${activePage === "actions" ? "bg-white/20" : "hover:bg-white/10"
+            }`}
         >
           <CheckSquare size={28} className="flex-shrink-0" />
           <span>Priority Action Items</span>
         </a>
         <Link
           href="/app/chatbot"
-          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl ${
-            activePage === "chatbot" ? "bg-white/20" : "hover:bg-white/10"
-          }`}
+          className={`flex items-center gap-4 px-4 py-4 rounded text-2xl ${activePage === "chatbot" ? "bg-white/20" : "hover:bg-white/10"
+            }`}
         >
           <MessageSquare size={28} className="flex-shrink-0" />
-          <span>AI Assistant Chatbot</span>
+          <span>Debriefing Room</span>
         </Link>
       </nav>
     </aside>
