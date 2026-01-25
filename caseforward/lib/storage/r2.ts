@@ -73,52 +73,19 @@ export async function uploadToR2(
   }
 }
 
-/**
- * Generate a signed URL for viewing/downloading a file via Cloudflare Worker
- */
-export async function getSignedUrl(objectKey: string, expiresIn = 3600): Promise<string | null> {
-  const workerUrl = process.env.CF_WORKER_URL || process.env.CF_WORKER_UPLOAD_URL;
-  const apiKey = process.env.INTERNAL_API_KEY;
+export async function getSignedUrl(objectKey: string): Promise<string | null> {
+  const workerUrl = process.env.CF_WORKER_UPLOAD_URL;
 
-  if (!workerUrl || !apiKey) {
-    console.error('R2 configuration missing for signed URL');
+  if (!workerUrl) {
+    console.error('CF_WORKER_UPLOAD_URL not configured');
     return null;
   }
 
-  try {
-    // Request signed URL from worker
-    const response = await fetch(`${workerUrl}/signed-url`, {
-      method: 'POST',
-      headers: {
-        'X-Internal-Auth': apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        objectKey, 
-        expiresIn,
-        action: 'read' 
-      }),
-    });
-
-    if (!response.ok) {
-      // If the worker doesn't support signed URLs, construct a direct URL
-      // This assumes public bucket or worker handles auth
-      const baseUrl = process.env.R2_PUBLIC_URL || workerUrl;
-      return `${baseUrl}/file/${encodeURIComponent(objectKey)}`;
-    }
-
-    const result = await response.json();
-    return result.signedUrl || result.url || null;
-  } catch (error) {
-    console.error('Error generating signed URL:', error);
-    // Fallback: construct direct URL through worker
-    const baseUrl = process.env.R2_PUBLIC_URL || workerUrl;
-    return `${baseUrl}/file/${encodeURIComponent(objectKey)}`;
-  }
+  return `${workerUrl}/file/${encodeURIComponent(objectKey)}`;
 }
 
 export async function deleteFromR2(objectKey: string): Promise<boolean> {
-  const workerUrl = process.env.CF_WORKER_URL;
+  const workerUrl = process.env.CF_WORKER_UPLOAD_URL;
   const apiKey = process.env.INTERNAL_API_KEY;
 
   if (!workerUrl || !apiKey) {
