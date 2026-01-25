@@ -55,7 +55,7 @@ export default async function NewCasePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="space-y-2">
                   <span className="text-sm font-semibold text-[#4b1d1d]">
-                    Case Number
+                    Case Name
                   </span>
                   <input
                     type="text"
@@ -119,7 +119,7 @@ export default async function NewCasePage() {
                 />
               </label>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <label className="space-y-2">
                   <span className="text-sm font-semibold text-[#4b1d1d]">
                     Priority
@@ -128,17 +128,6 @@ export default async function NewCasePage() {
                     <option>Standard</option>
                     <option>Urgent</option>
                     <option>Time Sensitive</option>
-                  </select>
-                </label>
-                <label className="space-y-2">
-                  <span className="text-sm font-semibold text-[#4b1d1d]">
-                    Assign To
-                  </span>
-                  <select className="w-full rounded-none border border-[#d7cfc3] bg-white px-4 py-3 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#f0a56b]">
-                    <option>Unassigned</option>
-                    <option>AI Orchestrator</option>
-                    <option>Client Guru</option>
-                    <option>Evidence Analyzer</option>
                   </select>
                 </label>
               </div>

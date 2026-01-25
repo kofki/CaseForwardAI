@@ -2,11 +2,24 @@ import { auth0 } from "@/lib/auth0";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Poppins, Radley } from "next/font/google";
+import { CaseStatus, CaseStatusLabels } from "@/lib/db/types/enums";
 import dbConnect from "@/lib/db/dbConnect";
 import { getCases } from "@/lib/db/models/Case";
 
 const poppins = Poppins({ subsets: ["latin"], weight: "500" });
 const radley = Radley({ subsets: ["latin"], weight: "400" });
+
+const statusColor: Record<string, string> = {
+  [CaseStatus.INTAKE]: "bg-amber-600",
+  [CaseStatus.INVESTIGATION]: "bg-blue-700",
+  [CaseStatus.TREATMENT]: "bg-amber-700",
+  [CaseStatus.DEMAND_PREP]: "bg-indigo-700",
+  [CaseStatus.NEGOTIATION]: "bg-purple-700",
+  [CaseStatus.LITIGATION]: "bg-rose-700",
+  [CaseStatus.TRIAL]: "bg-red-700",
+  [CaseStatus.SETTLED]: "bg-teal-700",
+  [CaseStatus.CLOSED]: "bg-gray-600",
+};
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,6 +57,8 @@ export default async function Dashboard() {
     // Use real cases data
     caseList =
       cases?.slice(0, 4).map((c: any) => ({
+        status: c.status || CaseStatus.INTAKE,
+        id: c._id?.toString?.() || c.id || c.caseNumber,
         caseNum: c.caseNumber,
         client:
           `${c.client?.firstName || ""} ${c.client?.lastName || "Unknown"}`.trim(),
@@ -55,11 +70,9 @@ export default async function Dashboard() {
 
     actionItems =
       cases?.slice(0, 3).map((c: any) => ({
+        id: c._id?.toString?.() || c.id || c.caseNumber,
         caseNum: c.caseNumber,
-        status:
-          c.aiMetadata?.riskFlags?.length > 0
-            ? "Action Required"
-            : "Needs Review",
+        status: c.status || CaseStatus.INTAKE,
         action:
           c.aiMetadata?.nextSteps?.[0] ||
           `Review case details for ${c.client?.firstName || "client"}`,
@@ -132,13 +145,13 @@ export default async function Dashboard() {
             <span className="text-4xl">📊</span>
             <span>Dashboard</span>
           </a>
-          <a
-            href="#"
+          <Link
+            href="/app/cases"
             className="flex items-center gap-4 px-4 py-4 rounded hover:bg-white/10 text-2xl"
           >
             <span className="text-4xl">📁</span>
             <span>Cases</span>
-          </a>
+          </Link>
           <a
             href="#"
             className="flex items-center gap-4 px-4 py-4 rounded hover:bg-white/10 text-2xl"
@@ -193,9 +206,12 @@ export default async function Dashboard() {
         <div className="mb-8">
           <div className="bg-[#4b1d1d] text-white p-4 rounded-t-lg flex justify-between items-center">
             <h2 className="text-3xl font-bold">Action Items</h2>
-            <button className="text-base text-amber-200 hover:text-amber-100">
+            <Link
+              href="/app/cases"
+              className="text-base text-amber-200 hover:text-amber-100"
+            >
               View More
-            </button>
+            </Link>
           </div>
           <div className="bg-white rounded-b-lg shadow overflow-hidden">
             <table className="w-full">
@@ -219,21 +235,30 @@ export default async function Dashboard() {
                     className="border-b border-gray-100 hover:bg-gray-50"
                   >
                     <td className="px-6 py-4 text-base font-semibold text-gray-900">
-                      {item.caseNum}
+                      <Link
+                        href={`/app/case/${item.id}`}
+                        className="text-[#4b1d1d] hover:underline"
+                      >
+                        {item.caseNum}
+                      </Link>
                     </td>
                     <td className="px-6 py-4 text-base">
                       <span
                         className={`px-3 py-1 rounded text-white text-sm font-semibold ${
-                          item.status === "Needs Review"
-                            ? "bg-red-500"
-                            : "bg-orange-500"
+                          statusColor[item.status] || "bg-amber-600"
                         }`}
                       >
-                        {item.status}
+                        {CaseStatusLabels[item.status as CaseStatus] ||
+                          item.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
-                      {item.action}
+                      <Link
+                        href={`/app/case/${item.id}`}
+                        className="text-[#4b1d1d] hover:underline"
+                      >
+                        {item.action}
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -246,9 +271,12 @@ export default async function Dashboard() {
         <div className="mb-8">
           <div className="bg-[#4b1d1d] text-white p-4 rounded-t-lg flex justify-between items-center">
             <h2 className="text-3xl font-bold">Case List</h2>
-            <button className="text-base text-amber-200 hover:text-amber-100">
+            <Link
+              href="/app/cases"
+              className="text-base text-amber-200 hover:text-amber-100"
+            >
               View More
-            </button>
+            </Link>
           </div>
           <div className="bg-white rounded-b-lg shadow overflow-hidden">
             <table className="w-full">
@@ -275,16 +303,36 @@ export default async function Dashboard() {
                     className="border-b border-gray-100 hover:bg-gray-50"
                   >
                     <td className="px-6 py-4 text-base font-semibold text-gray-900">
-                      {item.caseNum}
+                      <Link
+                        href={`/app/case/${item.id}`}
+                        className="block w-full h-full text-[#4b1d1d] hover:underline"
+                      >
+                        {item.caseNum}
+                      </Link>
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
-                      {item.client}
+                      <Link
+                        href={`/app/case/${item.id}`}
+                        className="block w-full h-full text-[#4b1d1d] hover:underline"
+                      >
+                        {item.client}
+                      </Link>
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
-                      {item.caseName}
+                      <Link
+                        href={`/app/case/${item.id}`}
+                        className="block w-full h-full text-[#4b1d1d] hover:underline"
+                      >
+                        {item.caseName}
+                      </Link>
                     </td>
                     <td className="px-6 py-4 text-base text-gray-700">
-                      {item.incidentDate}
+                      <Link
+                        href={`/app/case/${item.id}`}
+                        className="block w-full h-full text-[#4b1d1d] hover:underline"
+                      >
+                        {item.incidentDate}
+                      </Link>
                     </td>
                   </tr>
                 ))}
