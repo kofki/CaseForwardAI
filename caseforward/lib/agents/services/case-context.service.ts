@@ -6,7 +6,7 @@
  */
 
 import mongoose from 'mongoose';
-import connectToDatabase from '../../db/connect';
+import { connectToDatabase } from '../../db/connect';
 import Case, { ICase } from '../../db/models/Case';
 import Document, { IDocument } from '../../db/models/Document';
 import Lien, { ILien } from '../../db/models/Lien';
