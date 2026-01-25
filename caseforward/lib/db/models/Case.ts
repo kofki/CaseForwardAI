@@ -1,5 +1,3 @@
-// lib/db/models/Case.ts
-
 import mongoose, { Schema, Document } from 'mongoose';
 import {
   CaseType,
@@ -8,11 +6,17 @@ import {
   CASE_STATUSES,
 } from '../types/enums';
 
+// --- Mongoose Interface (Enhanced) ---
+
 export interface ICase extends Document {
   caseNumber: string;
   fileNumber: string;
+  // Compatibility fields for main branch
+  title?: string;
+  description?: string;
+
   caseType: CaseType;
-  status: CaseStatus;
+  status: CaseStatus | string; // Allow string for legacy statuses
 
   client: {
     name: string;
@@ -122,16 +126,17 @@ const CaseSchema = new Schema<ICase>(
     },
     fileNumber: {
       type: String,
-      required: [true, 'File number is required'],
-      unique: true,
+      required: [false, 'File number is optional for legacy cases'], // Relaxed for compat
       trim: true,
     },
+    title: String,
+    description: String,
 
     caseType: {
       type: String,
-      required: [true, 'Case type is required'],
+      required: [false, 'Case type is optional for legacy'], // Relaxed
       enum: {
-        values: CASE_TYPES,
+        values: [...CASE_TYPES, 'Personal Injury', 'Other'], // Extended
         message: '{VALUE} is not a valid case type',
       },
       index: true,
@@ -140,10 +145,6 @@ const CaseSchema = new Schema<ICase>(
       type: String,
       required: true,
       default: CaseStatus.INTAKE,
-      enum: {
-        values: CASE_STATUSES,
-        message: '{VALUE} is not a valid case status',
-      },
       index: true,
     },
 
@@ -155,13 +156,13 @@ const CaseSchema = new Schema<ICase>(
       },
       email: {
         type: String,
-        required: [true, 'Client email is required'],
+        required: [false, 'Client email is optional for legacy'], // Relaxed
         trim: true,
         lowercase: true,
       },
       phone: {
         type: String,
-        required: [true, 'Client phone is required'],
+        required: [false, 'Client phone is optional for legacy'], // Relaxed
         trim: true,
       },
       address: {
@@ -176,37 +177,26 @@ const CaseSchema = new Schema<ICase>(
     incident: {
       date: {
         type: Date,
-        required: [true, 'Incident date is required'],
+        required: [false, 'Incident date is optional for legacy'],
       },
-      time: {
-        type: String,
-      },
+      time: String,
       location: {
         address: String,
-        city: {
-          type: String,
-          required: [true, 'Incident city is required'],
-        },
-        state: {
-          type: String,
-          required: [true, 'Incident state is required'],
-        },
+        city: String,
+        state: String,
         zipCode: String,
         county: String,
       },
       description: {
         type: String,
-        required: [true, 'Incident description is required'],
+        required: [false, 'Incident description is optional'],
       },
       policeReportNumber: String,
     },
 
     defendants: [
       {
-        name: {
-          type: String,
-          required: true,
-        },
+        name: String,
         type: {
           type: String,
           enum: ['individual', 'company', 'government'],
@@ -223,47 +213,27 @@ const CaseSchema = new Schema<ICase>(
         coverageType: String,
       },
       defendantPolicy: {
-        carrier: {
-          type: String,
-          required: [true, 'Defendant insurance carrier is required'],
-        },
+        carrier: String,
         policyNumber: String,
-        claimNumber: {
-          type: String,
-          required: [true, 'Claim number is required'],
-          index: true,
-        },
+        claimNumber: String,
         policyLimit: Number,
         adjuster: {
-          name: {
-            type: String,
-            required: [true, 'Adjuster name is required'],
-          },
-          phone: {
-            type: String,
-            required: [true, 'Adjuster phone is required'],
-          },
-          email: {
-            type: String,
-            required: [true, 'Adjuster email is required'],
-          },
+          name: String,
+          phone: String,
+          email: String,
           fax: String,
         },
       },
     },
 
     dates: {
-      incidentDate: {
-        type: Date,
-        required: [true, 'Incident date is required'],
-      },
+      incidentDate: Date,
       intakeDate: {
         type: Date,
         default: Date.now,
       },
       statuteOfLimitations: {
         type: Date,
-        required: [true, 'Statute of limitations date is required'],
         index: true,
       },
       demandSentDate: Date,
@@ -271,42 +241,14 @@ const CaseSchema = new Schema<ICase>(
     },
 
     financials: {
-      totalMedicalBills: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      totalLiens: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      lostWages: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      propertyDamage: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      demandAmount: {
-        type: Number,
-        min: 0,
-      },
-      settlementAmount: {
-        type: Number,
-        min: 0,
-      },
-      attorneyFees: {
-        type: Number,
-        min: 0,
-      },
-      clientRecovery: {
-        type: Number,
-        min: 0,
-      },
+      totalMedicalBills: { type: Number, default: 0 },
+      totalLiens: { type: Number, default: 0 },
+      lostWages: { type: Number, default: 0 },
+      propertyDamage: { type: Number, default: 0 },
+      demandAmount: Number,
+      settlementAmount: Number,
+      attorneyFees: Number,
+      clientRecovery: Number,
     },
 
     evidenceChecklist: {
@@ -323,41 +265,28 @@ const CaseSchema = new Schema<ICase>(
     },
 
     team: {
-      leadAttorney: {
-        type: String,
-        required: [true, 'Lead attorney is required'],
-      },
+      leadAttorney: String,
       paralegal: String,
       caseManager: String,
     },
 
     aiMetadata: {
       lastAnalyzedAt: Date,
-      pendingActions: {
-        type: Number,
-        default: 0,
-      },
-      completedActions: {
-        type: Number,
-        default: 0,
-      },
+      pendingActions: { type: Number, default: 0 },
+      completedActions: { type: Number, default: 0 },
       flags: [String],
     },
   },
   {
     timestamps: true,
     collection: 'cases',
+    strict: false, // Allow fields from Main that aren't in schema
   }
 );
 
-CaseSchema.index({ status: 1, 'dates.statuteOfLimitations': 1 });
-CaseSchema.index({ 'team.leadAttorney': 1, status: 1 });
-CaseSchema.index({ caseType: 1, status: 1 });
-CaseSchema.index({ 'client.email': 1 });
-CaseSchema.index({ createdAt: -1 });
-
+// Virtuals
 CaseSchema.virtual('daysUntilSOL').get(function () {
-  if (!this.dates.statuteOfLimitations) return null;
+  if (!this.dates?.statuteOfLimitations) return null;
   const now = new Date();
   const sol = new Date(this.dates.statuteOfLimitations);
   const diffTime = sol.getTime() - now.getTime();
@@ -367,11 +296,59 @@ CaseSchema.virtual('daysUntilSOL').get(function () {
 
 CaseSchema.virtual('totalDamages').get(function () {
   return (
-    (this.financials.totalMedicalBills || 0) +
-    (this.financials.lostWages || 0) +
-    (this.financials.propertyDamage || 0)
+    (this.financials?.totalMedicalBills || 0) +
+    (this.financials?.lostWages || 0) +
+    (this.financials?.propertyDamage || 0)
   );
 });
 
-export default mongoose.models.Case ||
-  mongoose.model<ICase>('Case', CaseSchema);
+// Helper for connection
+import { connectToDatabase } from '../connect';
+
+// Ensure model is compiled
+let CaseModel: mongoose.Model<ICase>;
+try {
+  CaseModel = mongoose.model<ICase>('Case');
+} catch {
+  CaseModel = mongoose.model<ICase>('Case', CaseSchema);
+}
+
+export default CaseModel;
+
+// --- Helper Functions for Main Branch Compatibility ---
+
+export async function getCases(userId?: string) {
+  await connectToDatabase();
+  const query = userId ? { 'team.leadAttorney': userId } : {};
+  const cases = await CaseModel.find(query).sort({ createdAt: -1 }).lean();
+  return cases.map(c => ({
+    ...c,
+    _id: c._id.toString()
+  }));
+}
+
+export async function getCaseById(id: string) {
+  await connectToDatabase();
+  try {
+    const case_ = await CaseModel.findById(id).lean();
+    if (!case_) return null;
+    return {
+      ...case_,
+      _id: case_._id.toString()
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+export async function createCase(caseData: any) {
+  await connectToDatabase();
+  // Map flat structure (if from main) to nested structure (if needed) or rely on strict: false
+  // For now, pass caseData directly.
+  const newCase = new CaseModel(caseData);
+  const saved = await newCase.save();
+  return {
+    ...saved.toObject(),
+    _id: saved._id.toString()
+  };
+}

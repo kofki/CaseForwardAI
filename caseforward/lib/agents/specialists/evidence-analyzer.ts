@@ -1,9 +1,7 @@
-
 import { Specialist, AgentContext } from '../core/specialist';
 import { AgentRole, AgentMessage } from '../core/types';
 import { generateText } from 'ai';
 import { google } from '../core/gemini';
-import { formatCaseContextForPrompt } from '../services/case-context.service';
 
 export class EvidenceAnalyzer implements Specialist {
     role: AgentRole = 'EVIDENCE_ANALYZER';
@@ -105,4 +103,3 @@ Be the refreshing skeptic in the room. Keep it concise.
         return text;
     }
 }
-

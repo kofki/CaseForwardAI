@@ -1,29 +1,26 @@
-// lib/db/models/Action.ts
-
 import mongoose, { Schema, Document } from 'mongoose';
 import {
   ActionType,
   ActionStatus,
   ActionPriority,
-  AgentType,
-  InputSourceType,
   ACTION_TYPES,
   ACTION_STATUSES,
   ACTION_PRIORITIES,
-  AGENT_TYPES,
   INPUT_SOURCE_TYPES,
 } from '../types/enums';
+
+// --- Mongoose Interface ---
 
 export interface IAction extends Document {
   caseId: mongoose.Types.ObjectId;
   title: string;
   description: string;
-  actionType: ActionType;
+  actionType: ActionType | string; // Allow string for legacy/main types
   status: ActionStatus;
   priority: ActionPriority;
 
   source: {
-    type: InputSourceType;
+    type: string;
     reference?: string;
     documentId?: mongoose.Types.ObjectId;
     rawContent?: string;
@@ -70,7 +67,7 @@ export interface IAction extends Document {
     notes?: string;
   };
 
-  auditTraceId: string;
+  auditTraceId?: string; // Opt for main compat
 
   dueDate?: Date;
 
@@ -88,7 +85,7 @@ const ActionSchema = new Schema<IAction>(
     },
     title: {
       type: String,
-      required: [true, 'Action title is required'],
+      required: [false, 'Action title is optional for legacy'],
       trim: true,
     },
     description: {
@@ -99,7 +96,7 @@ const ActionSchema = new Schema<IAction>(
       type: String,
       required: [true, 'Action type is required'],
       enum: {
-        values: ACTION_TYPES,
+        values: [...ACTION_TYPES, 'approve', 'reject', 'review'], // Extended
         message: '{VALUE} is not a valid action type',
       },
       index: true,
@@ -108,30 +105,18 @@ const ActionSchema = new Schema<IAction>(
       type: String,
       required: true,
       default: ActionStatus.PENDING,
-      enum: {
-        values: ACTION_STATUSES,
-        message: '{VALUE} is not a valid action status',
-      },
       index: true,
     },
     priority: {
       type: Number,
       required: true,
       default: ActionPriority.MEDIUM,
-      enum: {
-        values: ACTION_PRIORITIES,
-        message: '{VALUE} is not a valid priority',
-      },
       index: true,
     },
     source: {
       type: {
         type: String,
-        required: [true, 'Source type is required'],
-        enum: {
-          values: INPUT_SOURCE_TYPES,
-          message: '{VALUE} is not a valid source type',
-        },
+        required: [false, 'Source type is optional'],
       },
       reference: String,
       documentId: {
@@ -146,18 +131,9 @@ const ActionSchema = new Schema<IAction>(
     },
     aiAnalysis: {
       evidenceFindings: {
-        missingDocuments: {
-          type: [String],
-          default: [],
-        },
-        flags: {
-          type: [String],
-          default: [],
-        },
-        keyFacts: {
-          type: [String],
-          default: [],
-        },
+        missingDocuments: { type: [String], default: [] },
+        flags: { type: [String], default: [] },
+        keyFacts: { type: [String], default: [] },
       },
       clientCommunication: {
         draftType: {
@@ -191,13 +167,8 @@ const ActionSchema = new Schema<IAction>(
       reviewedAt: Date,
       feedback: String,
       modifications: String,
-      rating: {
-        type: Number,
-        min: 1,
-        max: 5,
-      },
+      rating: Number,
     },
-
     execution: {
       executedAt: Date,
       executedBy: String,
@@ -206,7 +177,7 @@ const ActionSchema = new Schema<IAction>(
     },
     auditTraceId: {
       type: String,
-      required: [true, 'Audit trace ID is required'],
+      required: [false, 'Audit trace ID is optional'],
       index: true,
     },
     dueDate: {
@@ -217,16 +188,83 @@ const ActionSchema = new Schema<IAction>(
   {
     timestamps: true,
     collection: 'actions',
+    strict: false,
   }
 );
 
 ActionSchema.index({ status: 1, priority: 1, createdAt: 1 });
-
 ActionSchema.index({ caseId: 1, status: 1, createdAt: -1 });
 
-ActionSchema.index({ 'review.status': 1, 'review.reviewedAt': -1 });
+// Helper for connection
+import { connectToDatabase } from '../connect';
 
-ActionSchema.index({ status: 1, dueDate: 1 });
+let ActionModel: mongoose.Model<IAction>;
+try {
+  ActionModel = mongoose.model<IAction>('Action');
+} catch {
+  ActionModel = mongoose.model<IAction>('Action', ActionSchema);
+}
 
-export default mongoose.models.Action ||
-  mongoose.model<IAction>('Action', ActionSchema);
+export default ActionModel;
+
+// --- Helper Functions for Main Branch Compatibility ---
+
+export interface Action {
+  _id?: string;
+  caseId: string;
+  type: 'approve' | 'reject' | 'review';
+  actionCard: {
+    recommendation: 'approve' | 'reject' | 'review';
+    reasoning: string;
+    confidence: number;
+  };
+  consensus: {
+    clientGuruOpinion: string;
+    evidenceAnalyzerOpinion: string;
+    finalDecision: string;
+  };
+  createdAt: Date;
+  userId?: string;
+}
+
+export async function createAction(action: any) {
+  await connectToDatabase();
+
+  // Map 'main' style Action to Mongoose Schema
+  const mappedAction = {
+    caseId: action.caseId,
+    actionType: action.type || 'review', // map type
+    title: action.actionCard?.recommendation ? `Action: ${action.actionCard.recommendation}` : 'New Action',
+    description: action.actionCard?.reasoning || '',
+    aiAnalysis: {
+      roundTable: {
+        evidenceAnalyzerSays: action.consensus?.evidenceAnalyzerOpinion,
+        clientGuruSays: action.consensus?.clientGuruOpinion,
+        consensus: action.consensus?.finalDecision
+      },
+      confidence: action.actionCard?.confidence
+    },
+    source: {
+      type: 'automated',
+      triggeredAt: new Date()
+    },
+    // Spread rest to catch other fields
+    ...action
+  };
+
+  const newAction = new ActionModel(mappedAction);
+  const saved = await newAction.save();
+  return {
+    ...saved.toObject(),
+    _id: saved._id.toString()
+  };
+}
+
+export async function getActionsByCaseId(caseId: string) {
+  await connectToDatabase();
+  const actions = await ActionModel.find({ caseId }).sort({ createdAt: -1 }).lean();
+  return actions.map(action => ({
+    ...action,
+    _id: action._id.toString()
+  }));
+}

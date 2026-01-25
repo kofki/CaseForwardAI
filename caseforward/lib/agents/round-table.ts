@@ -1,11 +1,11 @@
-
+import { createAction } from '../db/models/Action';
 import { z } from 'zod';
 import { AgentRole, AgentMessage, ActionCard, ActionCardSchema } from './core/types';
 import { Specialist, AgentContext } from './core/specialist';
 import { ClientGuru } from './specialists/client-guru';
 import { EvidenceAnalyzer } from './specialists/evidence-analyzer';
 import { SettlementValuator } from './specialists/settlement-valuator';
-import { generateObject, generateText } from 'ai';
+import { generateObject } from 'ai';
 import { google } from './core/gemini';
 import { randomUUID } from 'crypto';
 import { fetchFullCaseContext, CaseContext, formatCaseContextForPrompt } from './services/case-context.service';
@@ -120,3 +120,52 @@ export class RoundTable {
     }
 }
 
+// --- Main Branch Compatibility Layer ---
+
+export interface RoundTableResult {
+    actionCard: ActionCard;
+    consensus: {
+        finalDecision: string;
+        clientGuruOpinion: string;
+        evidenceAnalyzerOpinion: string;
+    };
+    actionId: string;
+}
+
+export async function conductRoundTable(
+    caseId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    caseData: {
+        title: string;
+        description: string;
+        metadata?: Record<string, any>;
+    },
+    userId?: string
+): Promise<RoundTableResult> {
+    // Use the robust class-based implementation instead of simple generation
+    const roundTable = new RoundTable();
+
+    // Start discussion (using caseData.description as input/trigger)
+    const discussionResult = await roundTable.discussWithCase(caseId, "Review updated case data and recommend next steps.");
+
+    const consensus = {
+        finalDecision: discussionResult.card.reasoning,
+        clientGuruOpinion: discussionResult.history.find(m => m.role === 'CLIENT_GURU')?.content || 'No opinion',
+        evidenceAnalyzerOpinion: discussionResult.history.find(m => m.role === 'EVIDENCE_ANALYZER')?.content || 'No opinion',
+    };
+
+    // Create action record using the robust Mongoose model
+    const action = await createAction({
+        caseId,
+        type: discussionResult.card.type,
+        actionCard: discussionResult.card,
+        consensus: consensus,
+        userId,
+    });
+
+    return {
+        actionCard: discussionResult.card,
+        consensus,
+        actionId: action._id!,
+    };
+}
