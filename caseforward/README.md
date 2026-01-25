@@ -38,7 +38,4 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 
 
-//npm install @auth0/nextjs-auth0 
-@google/generative-ai 
-@solana/web3.js 
-pdf-parse
+//npm install @auth0/nextjs-auth0 @google/generative-ai @solana/web3.js @pdf-parse
