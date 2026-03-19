@@ -1,5 +1,7 @@
 # CaseForward | AI-Powered Case Management System
 
+## Swamphacks XI Winner 🏆 | 1st Place in Tender for Lawyers Challenge 🐊
+
 ### Built With
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
